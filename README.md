@@ -33,17 +33,88 @@ cathy-planning/
 
 ## Local Build & Run
 
-**Prerequisites**: .NET 8 SDK ([download](https://dotnet.microsoft.com/download/dotnet/8.0))
+The build process is identical on all platforms — only the .NET 8 SDK installation step differs.
+
+### Prerequisites
+
+<details>
+<summary><strong>Linux (Ubuntu / Debian)</strong></summary>
 
 ```bash
-# Restore, build, test
-dotnet restore
-dotnet build
-dotnet test
+# Add Microsoft package feed and install the SDK
+wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb
+rm packages-microsoft-prod.deb
 
-# Run the app
+sudo apt-get update
+sudo apt-get install -y dotnet-sdk-8.0
+```
+
+Or follow the [official Linux install guide](https://learn.microsoft.com/dotnet/core/install/linux).
+
+> **Note (Avalonia UI):** On headless servers you may need X11/Wayland libraries:
+> ```bash
+> sudo apt-get install -y libx11-dev libxrandr-dev libxi-dev libxcursor-dev libxdamage-dev
+> ```
+
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+1. Download the **.NET 8 SDK** installer from <https://dotnet.microsoft.com/download/dotnet/8.0>.
+2. Run the installer and follow the prompts.
+3. Open **Command Prompt**, **PowerShell**, or **Windows Terminal** and verify:
+   ```powershell
+   dotnet --version
+   ```
+
+</details>
+
+<details>
+<summary><strong>macOS (Intel & Apple Silicon)</strong></summary>
+
+**Option A – installer:**
+1. Download the **.NET 8 SDK** `.pkg` for your architecture (x64 or Arm64) from <https://dotnet.microsoft.com/download/dotnet/8.0>.
+2. Run the package and follow the prompts.
+
+**Option B – Homebrew:**
+```bash
+brew install --cask dotnet-sdk
+```
+
+Verify the installation:
+```bash
+dotnet --version
+```
+
+</details>
+
+---
+
+### Build, Test & Run
+
+Once the SDK is installed, the following commands work identically on Linux, Windows, and macOS:
+
+```bash
+# Clone the repository (if you haven't already)
+git clone https://github.com/XaviusB/cathy-planning.git
+cd cathy-planning
+
+# Restore dependencies
+dotnet restore
+
+# Build (Release configuration)
+dotnet build -c Release
+
+# Run the test suite
+dotnet test -c Release
+
+# Launch the desktop application
 dotnet run --project src/CathyPlanning.App
 ```
+
+> **Windows users:** use **PowerShell** or **Command Prompt** — the commands above are identical.
 
 ## Creating a Release
 
