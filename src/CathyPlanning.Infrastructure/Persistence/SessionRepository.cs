@@ -1,3 +1,4 @@
+using System.Globalization;
 using CathyPlanning.Domain.Entities;
 using CathyPlanning.Domain.ValueObjects;
 using YamlDotNet.Serialization;
@@ -70,7 +71,7 @@ public class SessionRepository
         Rotation = new RotationDefinition
         {
             WeekCount = m.Rotation.WeekCount,
-            StartDate = DateTime.Parse(m.Rotation.StartDate)
+            StartDate = DateTime.Parse(m.Rotation.StartDate, CultureInfo.InvariantCulture)
         },
         RestRules = m.RestRules.Select(r => new RestRule
         {
@@ -89,8 +90,8 @@ public class SessionRepository
         {
             Id = Guid.TryParse(sh.Id, out var sid) ? sid : Guid.NewGuid(),
             EmployeeId = Guid.TryParse(sh.EmployeeId, out var eid) ? eid : Guid.NewGuid(),
-            Start = DateTime.Parse(sh.Start),
-            End = DateTime.Parse(sh.End),
+            Start = DateTime.ParseExact(sh.Start, "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
+            End = DateTime.ParseExact(sh.End, "yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture),
             Label = sh.Label
         }).ToList()
     };

@@ -6,6 +6,9 @@ on:
     tags-ignore: ["v*"]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build-test:
     name: Build & Test (${{ matrix.os }})

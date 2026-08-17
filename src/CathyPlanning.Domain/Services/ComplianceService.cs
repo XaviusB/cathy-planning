@@ -76,11 +76,17 @@ public class ComplianceService
 
             double maxRestHours = 0;
 
-            // gap before first shift
-            maxRestHours = Math.Max(maxRestHours, (weekShifts.First().Start - weekStart).TotalHours);
-            // gap after last shift
-            maxRestHours = Math.Max(maxRestHours, (weekEnd - weekShifts.Last().End).TotalHours);
-            // gaps between shifts
+            // Gap before first shift: extend to last shift ending before this week (cross-boundary)
+            var prevShift = orderedShifts.LastOrDefault(s => s.End <= weekStart);
+            var gapBefore = weekShifts.First().Start - (prevShift?.End ?? weekStart);
+            maxRestHours = Math.Max(maxRestHours, gapBefore.TotalHours);
+
+            // Gap after last shift: extend to first shift starting after this week (cross-boundary)
+            var nextShift = orderedShifts.FirstOrDefault(s => s.Start >= weekEnd);
+            var gapAfter = (nextShift?.Start ?? weekEnd) - weekShifts.Last().End;
+            maxRestHours = Math.Max(maxRestHours, gapAfter.TotalHours);
+
+            // Gaps between shifts within the week
             for (int i = 1; i < weekShifts.Count; i++)
                 maxRestHours = Math.Max(maxRestHours, (weekShifts[i].Start - weekShifts[i - 1].End).TotalHours);
 
