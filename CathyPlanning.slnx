@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CathyPlanning.App/CathyPlanning.App.csproj" />
+    <Project Path="src/CathyPlanning.Domain/CathyPlanning.Domain.csproj" />
+    <Project Path="src/CathyPlanning.Infrastructure/CathyPlanning.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CathyPlanning.Domain.Tests/CathyPlanning.Domain.Tests.csproj" />
+  </Folder>
+</Solution>

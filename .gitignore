@@ -1,0 +1,21 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+.vscode/
+*.suo
+*.ncrunchsolution
+
+# NuGet
+packages/
+*.nupkg
+
+# Publish output
+publish/
+
+# macOS
+.DS_Store
+
+# Rider
+.idea/

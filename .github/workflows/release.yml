@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rid: win-x64
+            os: windows-latest
+          - rid: linux-x64
+            os: ubuntu-latest
+          - rid: osx-x64
+            os: macos-latest
+          - rid: osx-arm64
+            os: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ matrix.rid }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ matrix.rid }}-
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Publish
+        run: >
+          dotnet publish src/CathyPlanning.App/CathyPlanning.App.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish/${{ matrix.rid }}
+
+      - name: Archive artifact (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cd publish/${{ matrix.rid }}
+          zip -r ../../CathyPlanning-${{ github.ref_name }}-${{ matrix.rid }}.zip .
+
+      - name: Archive artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "publish\${{ matrix.rid }}\*" `
+            -DestinationPath "CathyPlanning-${{ github.ref_name }}-${{ matrix.rid }}.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CathyPlanning-${{ matrix.rid }}
+          path: CathyPlanning-${{ github.ref_name }}-${{ matrix.rid }}.zip
+          retention-days: 7
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Cathy Planning ${{ github.ref_name }}"
+          body: |
+            ## Cathy Planning ${{ github.ref_name }}
+
+            Cross-platform desktop team-planning app.
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows x64 | `CathyPlanning-${{ github.ref_name }}-win-x64.zip` |
+            | Linux x64 | `CathyPlanning-${{ github.ref_name }}-linux-x64.zip` |
+            | macOS x64 | `CathyPlanning-${{ github.ref_name }}-osx-x64.zip` |
+            | macOS ARM64 | `CathyPlanning-${{ github.ref_name }}-osx-arm64.zip` |
+          files: artifacts/**/*.zip
+          fail_on_unmatched_files: false
