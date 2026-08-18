@@ -9,42 +9,54 @@
     <!-- Toolbar -->
     <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8"
                 Background="#F0F4F8" Margin="0,0,0,2">
-      <Button Name="BtnNew" Content="New" Margin="8,4,0,4" />
-      <Button Name="BtnOpen" Content="Open…" Margin="0,4" />
-      <Button Name="BtnSave" Content="Save…" Margin="0,4" />
+      <Button Name="BtnNew"    Content="New"         Margin="8,4,0,4" />
+      <Button Name="BtnOpen"   Content="Open…"       Margin="0,4" />
+      <Button Name="BtnSave"   Content="Save…"       Margin="0,4" />
       <Separator Width="1" Margin="4,4" Background="#CCC" />
-      <Button Name="BtnGenerate" Content="Auto-Generate" Margin="0,4" />
+      <Button Name="BtnGenerate"      Content="Auto-Generate" Margin="0,4" />
+      <Button Name="BtnManagePeople"  Content="Manage People" Margin="0,4" />
       <Separator Width="1" Margin="4,4" Background="#CCC" />
-      <Button Name="BtnPrev" Content="◀" Width="32" Margin="0,4" />
+      <Button Name="BtnPrev"   Content="◀"   Width="32" Margin="0,4" />
+      <Button Name="BtnToday"  Content="Today"        Margin="0,4" />
       <TextBlock Name="TxtWeekLabel" VerticalAlignment="Center" Margin="4,0" FontWeight="SemiBold" />
-      <Button Name="BtnNext" Content="▶" Width="32" Margin="0,4" />
+      <Button Name="BtnNext"   Content="▶"   Width="32" Margin="0,4" />
     </StackPanel>
 
     <!-- Right panel -->
-    <Border DockPanel.Dock="Right" Width="280" Background="#FAFAFA"
+    <Border DockPanel.Dock="Right" Width="320" Background="#FAFAFA"
             BorderBrush="#DDD" BorderThickness="1,0,0,0">
-      <ScrollViewer>
-        <StackPanel Margin="12">
-          <TextBlock Text="Worked Hours" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
-          <TextBlock Name="TxtHours" TextWrapping="Wrap" />
-          <Separator Margin="0,10" />
-          <TextBlock Text="Compliance" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
-          <TextBlock Name="TxtCompliance" TextWrapping="Wrap" />
+      <DockPanel>
+        <!-- Period switcher -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4"
+                    Margin="12,10,12,4">
+          <TextBlock Text="Period:" VerticalAlignment="Center" FontWeight="SemiBold" />
+          <RadioButton Name="RbDay"   Content="Day"   GroupName="Period" Margin="4,0,0,0" />
+          <RadioButton Name="RbWeek"  Content="Week"  GroupName="Period" IsChecked="True" />
+          <RadioButton Name="RbMonth" Content="Month" GroupName="Period" />
         </StackPanel>
-      </ScrollViewer>
+
+        <ScrollViewer>
+          <StackPanel Margin="12,4,12,12">
+            <TextBlock Text="Hours &amp; Usage" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
+            <!-- Report table built in code-behind -->
+            <StackPanel Name="ReportTablePanel" Spacing="2" />
+            <Separator Margin="0,10" />
+            <TextBlock Text="Compliance" FontWeight="Bold" FontSize="14" Margin="0,0,0,6" />
+            <TextBlock Name="TxtCompliance" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
     </Border>
 
     <!-- Calendar area -->
     <Grid Name="CalendarRoot">
-      <!-- Employee row headers column -->
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="100" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
-
-      <!-- Day headers + employee rows (drawn in code-behind) -->
       <Canvas Name="CalendarCanvas" Grid.Column="0" Grid.ColumnSpan="2"
               ClipToBounds="True" />
     </Grid>
   </DockPanel>
 </Window>
+

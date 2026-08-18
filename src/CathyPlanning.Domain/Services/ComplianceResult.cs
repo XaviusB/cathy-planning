@@ -16,6 +16,8 @@ public class EmployeeHoursSummary
     public string EmployeeName { get; init; } = string.Empty;
     public double TotalHours { get; init; }
     public double MaxWeeklyHours { get; init; }
+    public double PercentUsed => MaxWeeklyHours > 0 ? TotalHours / MaxWeeklyHours * 100.0 : 0;
+    public int ViolationCount { get; init; }
 }
 
 public class ComplianceReport

@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CathyPlanning.App.Dialogs.AssignShiftDialog"
+        Title="New Shift"
+        Width="340" Height="260"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+  <StackPanel Margin="16" Spacing="10">
+    <TextBlock Text="New Shift" FontWeight="Bold" FontSize="14" />
+
+    <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto">
+      <TextBlock Grid.Row="0" Grid.Column="0" Text="Employee" VerticalAlignment="Center" />
+      <ComboBox Name="CbEmployee" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" />
+
+      <TextBlock Grid.Row="1" Grid.Column="0" Text="Start" VerticalAlignment="Center" Margin="0,6,0,0" />
+      <TextBox   Name="TxtStart"   Grid.Row="1" Grid.Column="1" Margin="0,6,0,0" />
+
+      <TextBlock Grid.Row="2" Grid.Column="0" Text="End" VerticalAlignment="Center" Margin="0,6,0,0" />
+      <TextBox   Name="TxtEnd"     Grid.Row="2" Grid.Column="1" Margin="0,6,0,0" />
+
+      <TextBlock Grid.Row="3" Grid.Column="0" Text="Label" VerticalAlignment="Center" Margin="0,6,0,0" />
+      <TextBox   Name="TxtLabel"   Grid.Row="3" Grid.Column="1" Margin="0,6,0,0" Watermark="e.g. Morning" />
+    </Grid>
+
+    <TextBlock Name="TxtError" Foreground="Red" TextWrapping="Wrap" IsVisible="False" />
+
+    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,8,0,0">
+      <Button Name="BtnOk"     Content="Add Shift" />
+      <Button Name="BtnCancel" Content="Cancel"    />
+    </StackPanel>
+  </StackPanel>
+</Window>

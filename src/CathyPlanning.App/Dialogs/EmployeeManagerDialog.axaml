@@ -1,0 +1,24 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CathyPlanning.App.Dialogs.EmployeeManagerDialog"
+        Title="Manage People"
+        Width="560" Height="420"
+        MinWidth="400" MinHeight="300"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="12">
+    <!-- Add row at bottom -->
+    <Border DockPanel.Dock="Bottom" Margin="0,8,0,0">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <TextBox Name="TxtNewName"  Watermark="Name"      Width="140" />
+        <TextBox Name="TxtNewRole"  Watermark="Role"      Width="120" />
+        <TextBox Name="TxtNewHours" Watermark="Max h/wk"  Width="80"  />
+        <Button  Name="BtnAdd"      Content="Add"         />
+      </StackPanel>
+    </Border>
+
+    <!-- Employee list -->
+    <ScrollViewer>
+      <StackPanel Name="EmpList" Spacing="4" />
+    </ScrollViewer>
+  </DockPanel>
+</Window>

@@ -9,6 +9,8 @@ using CathyPlanning.Domain.ValueObjects;
 
 namespace CathyPlanning.App.ViewModels;
 
+public enum ReportPeriod { Day, Week, Month }
+
 public class MainViewModel : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -22,6 +24,7 @@ public class MainViewModel : INotifyPropertyChanged
     private string _complianceSummary = string.Empty;
     private string _hoursSummary = string.Empty;
     private DateTime _displayWeekStart;
+    private ReportPeriod _selectedPeriod = ReportPeriod.Week;
 
     public MainViewModel()
     {
@@ -53,6 +56,24 @@ public class MainViewModel : INotifyPropertyChanged
         private set { _complianceSummary = value; OnPropertyChanged(); }
     }
 
+    public ReportPeriod SelectedPeriod
+    {
+        get => _selectedPeriod;
+        set { _selectedPeriod = value; OnPropertyChanged(); RefreshSummaries(); }
+    }
+
+    /// <summary>Returns the (start, end) date range for the currently selected report period.</summary>
+    public (DateTime Start, DateTime End) GetReportRange()
+    {
+        return _selectedPeriod switch
+        {
+            ReportPeriod.Day => (_displayWeekStart.Date, _displayWeekStart.Date.AddDays(1)),
+            ReportPeriod.Month => (new DateTime(_displayWeekStart.Year, _displayWeekStart.Month, 1),
+                                   new DateTime(_displayWeekStart.Year, _displayWeekStart.Month, 1).AddMonths(1)),
+            _ => (_displayWeekStart, _displayWeekStart.AddDays(7)),
+        };
+    }
+
     public List<Employee> Employees => _session.Employees;
 
     public List<ShiftAssignment> ShiftsForWeek(DateTime weekStart)
@@ -72,6 +93,16 @@ public class MainViewModel : INotifyPropertyChanged
     public void NextWeek()
     {
         DisplayWeekStart = DisplayWeekStart.AddDays(7);
+        OnPropertyChanged(nameof(ShiftsChangedMarker));
+    }
+
+    public void GoToToday()
+    {
+        var today = DateTime.Today;
+        // Monday of the current week (ISO: Mon = 1)
+        var offset = ((int)today.DayOfWeek - 1 + 7) % 7;
+        DisplayWeekStart = today.AddDays(-offset);
+        RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
     }
 
@@ -97,6 +128,39 @@ public class MainViewModel : INotifyPropertyChanged
         }
     }
 
+    public void AddShift(Guid employeeId, DateTime start, DateTime end, string label)
+    {
+        _session.Shifts.Add(new ShiftAssignment
+        {
+            EmployeeId = employeeId,
+            Start = start,
+            End = end,
+            Label = label
+        });
+        RefreshSummaries();
+        OnPropertyChanged(nameof(ShiftsChangedMarker));
+    }
+
+    public void UpdateShift(Guid shiftId, Guid employeeId, DateTime start, DateTime end, string label)
+    {
+        var shift = _session.Shifts.FirstOrDefault(s => s.Id == shiftId);
+        if (shift == null) return;
+        shift.EmployeeId = employeeId;
+        shift.Start = start;
+        shift.End = end;
+        shift.Label = label;
+        RefreshSummaries();
+        OnPropertyChanged(nameof(ShiftsChangedMarker));
+    }
+
+    public void DeleteShift(Guid shiftId)
+    {
+        var shift = _session.Shifts.FirstOrDefault(s => s.Id == shiftId);
+        if (shift != null) _session.Shifts.Remove(shift);
+        RefreshSummaries();
+        OnPropertyChanged(nameof(ShiftsChangedMarker));
+    }
+
     public void GeneratePlan()
     {
         _plannerService.GeneratePlan(_session);
@@ -115,12 +179,49 @@ public class MainViewModel : INotifyPropertyChanged
         RefreshSummaries();
     }
 
+    // --- Employee management ---
+
+    public void AddEmployee(string name, string role, double maxWeeklyHours)
+    {
+        _session.Employees.Add(new Employee { Name = name, Role = role, MaxWeeklyHours = maxWeeklyHours });
+        OnPropertyChanged(nameof(Employees));
+        RefreshSummaries();
+        OnPropertyChanged(nameof(ShiftsChangedMarker));
+    }
+
+    public void RemoveEmployee(Guid id)
+    {
+        var emp = _session.Employees.FirstOrDefault(e => e.Id == id);
+        if (emp == null) return;
+        _session.Employees.Remove(emp);
+        // Also remove the employee's shifts
+        _session.Shifts.RemoveAll(s => s.EmployeeId == id);
+        OnPropertyChanged(nameof(Employees));
+        RefreshSummaries();
+        OnPropertyChanged(nameof(ShiftsChangedMarker));
+    }
+
+    public void UpdateEmployee(Guid id, string name, string role, double maxWeeklyHours)
+    {
+        var emp = _session.Employees.FirstOrDefault(e => e.Id == id);
+        if (emp == null) return;
+        emp.Name = name;
+        emp.Role = role;
+        emp.MaxWeeklyHours = maxWeeklyHours;
+        OnPropertyChanged(nameof(Employees));
+        RefreshSummaries();
+        OnPropertyChanged(nameof(ShiftsChangedMarker));
+    }
+
+    // --- Summaries ---
+
     public void RefreshSummaries()
     {
-        var report = _complianceService.Evaluate(_session);
+        var (start, end) = GetReportRange();
+        var report = _complianceService.EvaluateForPeriod(_session, start, end);
 
         var hours = string.Join("\n", report.HoursSummaries.Select(s =>
-            $"{s.EmployeeName}: {s.TotalHours:F1}h / {s.MaxWeeklyHours}h max"));
+            $"{s.EmployeeName}: {s.TotalHours:F1}h / {s.MaxWeeklyHours}h ({s.PercentUsed:F0}%)"));
 
         HoursSummary = string.IsNullOrEmpty(hours) ? "No employees." : hours;
 
