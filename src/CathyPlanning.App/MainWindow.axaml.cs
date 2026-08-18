@@ -141,9 +141,8 @@ public partial class MainWindow : Window
         var canvasWidth = canvas.Bounds.Width > 0 ? canvas.Bounds.Width : 1100;
         var gridWidth   = canvasWidth - RowHeaderWidth;
         var dayWidth    = Math.Max(MinCellWidth, gridWidth / 7.0);
-
-        var employees = _vm.Employees;
-        var rowHeight = HourHeight * 24;
+        var rowHeight   = HourHeight * 24;
+        var totalHeight = HeaderHeight + rowHeight;
 
         canvas.Background = Brushes.White;
 
@@ -157,48 +156,114 @@ public partial class MainWindow : Window
                     ? new SolidColorBrush(Color.Parse("#D0E8FF"))
                     : new SolidColorBrush(Color.Parse("#E8EDF2")));
             DrawText(canvas, day.ToString("ddd\ndd"), x + 4, 4, 11, Brushes.Black, dayWidth - 8);
-            DrawLine(canvas, x, 0, x, HeaderHeight + employees.Count * rowHeight, new SolidColorBrush(Color.Parse("#CCC")));
+            DrawLine(canvas, x, 0, x, totalHeight, new SolidColorBrush(Color.Parse("#CCC")));
         }
-        DrawLine(canvas, RowHeaderWidth + 7 * dayWidth, 0, RowHeaderWidth + 7 * dayWidth, HeaderHeight + employees.Count * rowHeight, new SolidColorBrush(Color.Parse("#CCC")));
+        DrawLine(canvas, RowHeaderWidth + 7 * dayWidth, 0, RowHeaderWidth + 7 * dayWidth, totalHeight, new SolidColorBrush(Color.Parse("#CCC")));
 
-        // Employee rows
-        for (int e = 0; e < employees.Count; e++)
+        // Hour grid lines and labels (single shared row)
+        DrawRect(canvas, 0, HeaderHeight, RowHeaderWidth - 1, rowHeight, new SolidColorBrush(Color.Parse("#F4F7FA")));
+        for (int h = 0; h <= 24; h++)
         {
-            var emp  = employees[e];
-            var rowY = HeaderHeight + e * rowHeight;
+            var lineY = HeaderHeight + h * HourHeight;
+            DrawLine(canvas, RowHeaderWidth, lineY, RowHeaderWidth + 7 * dayWidth, lineY,
+                h % 4 == 0 ? new SolidColorBrush(Color.Parse("#DDD")) : new SolidColorBrush(Color.Parse("#F0F0F0")));
+            if (h < 24 && h % 4 == 0)
+                DrawText(canvas, $"{h:00}:00", 2, lineY + 1, 9, new SolidColorBrush(Color.Parse("#888")), RowHeaderWidth - 4);
+        }
+        DrawLine(canvas, 0, totalHeight, RowHeaderWidth + 7 * dayWidth, totalHeight, new SolidColorBrush(Color.Parse("#BBB")));
 
-            DrawRect(canvas, 0, rowY, RowHeaderWidth - 1, rowHeight, new SolidColorBrush(Color.Parse("#F4F7FA")));
-            DrawText(canvas, emp.Name, 4, rowY + 4, 11, Brushes.Black, RowHeaderWidth - 8);
+        // Header separator and left border
+        DrawLine(canvas, 0, HeaderHeight, RowHeaderWidth + 7 * dayWidth, HeaderHeight, new SolidColorBrush(Color.Parse("#999")));
+        DrawLine(canvas, RowHeaderWidth, 0, RowHeaderWidth, totalHeight, new SolidColorBrush(Color.Parse("#999")));
 
-            for (int h = 0; h <= 24; h++)
+        // Place all shift blocks, with overlapping shifts in the same day laid out side-by-side
+        var weekShifts = _vm.ShiftsForWeek(_vm.DisplayWeekStart);
+
+        for (int d = 0; d < 7; d++)
+        {
+            var dayDate   = _vm.DisplayWeekStart.AddDays(d);
+            var dayShifts = weekShifts
+                .Where(s => s.Start.Date == dayDate.Date || (s.Start.Date < dayDate.Date && s.End.Date >= dayDate.Date))
+                .OrderBy(s => s.Start)
+                .ToList();
+
+            var lanes = AssignLanes(dayShifts);
+
+            foreach (var shift in dayShifts)
             {
-                var lineY = rowY + h * HourHeight;
-                DrawLine(canvas, RowHeaderWidth, lineY, RowHeaderWidth + 7 * dayWidth, lineY,
-                    h % 4 == 0 ? new SolidColorBrush(Color.Parse("#DDD")) : new SolidColorBrush(Color.Parse("#F0F0F0")));
-                if (h < 24 && h % 4 == 0)
-                    DrawText(canvas, $"{h:00}:00", 2, lineY + 1, 9, new SolidColorBrush(Color.Parse("#888")), RowHeaderWidth - 4);
-            }
+                var emp = _vm.Employees.FirstOrDefault(e => e.Id == shift.EmployeeId);
+                if (emp == null) continue;
 
-            DrawLine(canvas, 0, rowY + rowHeight, RowHeaderWidth + 7 * dayWidth, rowY + rowHeight, new SolidColorBrush(Color.Parse("#BBB")));
+                var (lane, laneCount) = lanes[shift.Id];
+                var laneWidth  = dayWidth / laneCount;
+                var blockX     = RowHeaderWidth + d * dayWidth + lane * laneWidth + 1;
+                var blockW     = laneWidth - 2;
 
-            foreach (var shift in _vm.ShiftsForWeek(_vm.DisplayWeekStart).Where(s => s.EmployeeId == emp.Id))
-            {
-                var dayIndex = (shift.Start.Date - _vm.DisplayWeekStart.Date).TotalDays;
-                if (dayIndex < 0 || dayIndex >= 7) continue;
-
-                var blockX   = RowHeaderWidth + dayIndex * dayWidth + 2;
-                var startFrac = shift.Start.Hour + shift.Start.Minute / 60.0;
-                var endFrac   = Math.Min(shift.End.Hour + shift.End.Minute / 60.0, 24);
-                var blockY   = rowY + startFrac * HourHeight;
-                var blockH   = Math.Max(8, (endFrac - startFrac) * HourHeight);
-                var blockW   = dayWidth - 4;
+                // Clamp fractions to the current day (handles multi-day shifts and midnight-crossing shifts)
+                var startFrac  = shift.Start.Date == dayDate.Date
+                    ? shift.Start.Hour + shift.Start.Minute / 60.0
+                    : 0.0;
+                var endFrac    = shift.End.Date == dayDate.Date
+                    ? Math.Min(shift.End.Hour + shift.End.Minute / 60.0, 24)
+                    : 24.0;
+                var blockY     = HeaderHeight + startFrac * HourHeight;
+                var blockH     = Math.Max(8, (endFrac - startFrac) * HourHeight);
 
                 canvas.Children.Add(CreateShiftBlock(shift, blockX, blockY, blockW, blockH, emp));
             }
         }
+    }
 
-        DrawLine(canvas, 0, HeaderHeight, RowHeaderWidth + 7 * dayWidth, HeaderHeight, new SolidColorBrush(Color.Parse("#999")));
-        DrawLine(canvas, RowHeaderWidth, 0, RowHeaderWidth, HeaderHeight + employees.Count * rowHeight, new SolidColorBrush(Color.Parse("#999")));
+    /// <summary>
+    /// Assigns each shift a (lane, laneCount) pair so that overlapping shifts
+    /// within the same day are displayed side-by-side.
+    /// </summary>
+    private static Dictionary<Guid, (int Lane, int LaneCount)> AssignLanes(List<ShiftAssignment> shifts)
+    {
+        var result = new Dictionary<Guid, (int, int)>();
+        if (shifts.Count == 0) return result;
+
+        // Build overlap groups using a greedy interval-coloring approach.
+        // lanes[i] = end time of the last shift placed in lane i.
+        var laneEnds = new List<DateTime>();
+        var shiftLanes = new Dictionary<Guid, int>();
+
+        foreach (var shift in shifts)
+        {
+            // Find the first lane whose last shift has ended before this shift starts.
+            int chosen = -1;
+            for (int i = 0; i < laneEnds.Count; i++)
+            {
+                if (laneEnds[i] <= shift.Start)
+                {
+                    chosen = i;
+                    break;
+                }
+            }
+            if (chosen == -1)
+            {
+                chosen = laneEnds.Count;
+                laneEnds.Add(DateTime.MinValue);
+            }
+            laneEnds[chosen] = shift.End;
+            shiftLanes[shift.Id] = chosen;
+        }
+
+        // For each shift, laneCount is the maximum number of concurrent lanes
+        // during its time interval.
+        foreach (var shift in shifts)
+        {
+            int maxConcurrent = 0;
+            for (int t = 0; t < laneEnds.Count; t++)
+            {
+                // A lane t is "active" during this shift if any shift in lane t overlaps.
+                if (shifts.Any(s => shiftLanes[s.Id] == t && s.Start < shift.End && s.End > shift.Start))
+                    maxConcurrent++;
+            }
+            result[shift.Id] = (shiftLanes[shift.Id], Math.Max(1, maxConcurrent));
+        }
+
+        return result;
     }
 
     private void RefreshReport()
@@ -293,7 +358,7 @@ public partial class MainWindow : Window
         var grid  = new Grid();
         var label = new TextBlock
         {
-            Text         = $"{shift.Label}\n{shift.Start:HH:mm}–{shift.End:HH:mm}",
+            Text         = $"{emp.Name}\n{shift.Label}\n{shift.Start:HH:mm}–{shift.End:HH:mm}",
             FontSize     = 10,
             Foreground   = Brushes.White,
             Margin       = new Thickness(3, 2, 3, 12),
@@ -416,23 +481,18 @@ public partial class MainWindow : Window
 
         if (_isResizing)
         {
-            var blockTop  = _blockOriginalTop;
-            var empIndex  = GetEmployeeIndexFromY(blockTop);
-            if (empIndex >= 0)
-            {
-                var relativeTop = blockTop - (HeaderHeight + empIndex * HourHeight * 24);
-                var endHour     = Math.Clamp((relativeTop + _draggingBlock.Height) / HourHeight, 0, 24);
-                var newEnd      = _draggingShift.Start.Date.AddHours(endHour);
-                _vm.ResizeShift(_draggingShift, newEnd);
-            }
+            var currentTop  = Canvas.GetTop(_draggingBlock);
+            var relativeTop = currentTop - HeaderHeight;
+            var endHour     = Math.Clamp((relativeTop + _draggingBlock.Height) / HourHeight, 0, 24);
+            var newEnd      = _draggingShift.Start.Date.AddHours(endHour);
+            _vm.ResizeShift(_draggingShift, newEnd);
         }
         else
         {
-            var blockX   = Canvas.GetLeft(_draggingBlock);
-            var blockY   = Canvas.GetTop(_draggingBlock);
-            var dayIndex = Math.Clamp((int)Math.Round((blockX - RowHeaderWidth) / dayWidth), 0, 6);
-            var empIndex = GetEmployeeIndexFromY(blockY);
-            var hourInDay = Math.Clamp((blockY - HeaderHeight - Math.Max(0, empIndex) * HourHeight * 24) / HourHeight, 0, 23.5);
+            var blockX    = Canvas.GetLeft(_draggingBlock);
+            var blockY    = Canvas.GetTop(_draggingBlock);
+            var dayIndex  = Math.Clamp((int)Math.Round((blockX - RowHeaderWidth) / dayWidth), 0, 6);
+            var hourInDay = Math.Clamp((blockY - HeaderHeight) / HourHeight, 0, 23.5);
 
             var newDate  = _vm.DisplayWeekStart.AddDays(dayIndex);
             var newStart = newDate.Date
@@ -523,9 +583,7 @@ public partial class MainWindow : Window
         var dayIndex  = Math.Clamp((int)((_createStartPos.X - RowHeaderWidth) / dayWidth), 0, 6);
 
         // Convert Y positions to times
-        var empIndex  = GetEmployeeIndexFromY(_createStartPos.Y);
-        var rowBaseY  = HeaderHeight + Math.Max(0, empIndex) * HourHeight * 24;
-        double HourFromY(double y) => Math.Clamp((y - rowBaseY) / HourHeight, 0, 24);
+        double HourFromY(double y) => Math.Clamp((y - HeaderHeight) / HourHeight, 0, 24);
 
         var startHour = HourFromY(Math.Min(_createStartPos.Y, pos.Y));
         var endHour   = HourFromY(Math.Max(_createStartPos.Y, pos.Y));
@@ -588,13 +646,6 @@ public partial class MainWindow : Window
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
-
-    private int GetEmployeeIndexFromY(double y)
-    {
-        var relY = y - HeaderHeight;
-        if (relY < 0) return 0;
-        return (int)(relY / (HourHeight * 24));
-    }
 
     private Border? FindBlockForShift(ShiftAssignment shift)
     {
