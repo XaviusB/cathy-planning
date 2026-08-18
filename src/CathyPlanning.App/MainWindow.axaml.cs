@@ -19,6 +19,8 @@ public partial class MainWindow : Window
 {
     private MainViewModel _vm = new();
     private readonly SessionRepository _repo = new();
+    private readonly AppSettings _appSettings = AppSettings.Load();
+    private string? _currentFilePath;
 
     // Layout constants
     private const double HeaderHeight   = 36;
@@ -44,15 +46,35 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         WireButtons();
+        TryAutoLoadLastFile();
         DrawCalendar();
+    }
+
+    private void TryAutoLoadLastFile()
+    {
+        var path = _appSettings.LastFilePath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
+        try
+        {
+            _vm.LoadSession(_repo.Load(path));
+            _currentFilePath = path;
+        }
+        catch { /* silently ignore if auto-load fails */ }
     }
 
     private void WireButtons()
     {
-        this.FindControl<Button>("BtnNew")!.Click += (_, _) => { _vm = new MainViewModel(); DrawCalendar(); };
+        this.FindControl<Button>("BtnNew")!.Click += async (_, _) =>
+        {
+            if (!await ConfirmDiscardChanges()) return;
+            _vm = new MainViewModel();
+            _currentFilePath = null;
+            DrawCalendar();
+        };
 
         this.FindControl<Button>("BtnOpen")!.Click += async (_, _) =>
         {
+            if (!await ConfirmDiscardChanges()) return;
             var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Open Planning Session",
@@ -64,7 +86,14 @@ public partial class MainWindow : Window
                 var path = files[0].TryGetLocalPath();
                 if (path != null)
                 {
-                    try { _vm.LoadSession(_repo.Load(path)); DrawCalendar(); }
+                    try
+                    {
+                        _vm.LoadSession(_repo.Load(path));
+                        _currentFilePath = path;
+                        _appSettings.LastFilePath = path;
+                        _appSettings.Save();
+                        DrawCalendar();
+                    }
                     catch (Exception ex) { await ShowError(ex.Message); }
                 }
             }
@@ -72,21 +101,7 @@ public partial class MainWindow : Window
 
         this.FindControl<Button>("BtnSave")!.Click += async (_, _) =>
         {
-            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-            {
-                Title = "Save Planning Session",
-                DefaultExtension = "yaml",
-                FileTypeChoices = new[] { new FilePickerFileType("YAML") { Patterns = new[] { "*.yaml" } } }
-            });
-            if (file != null)
-            {
-                var path = file.TryGetLocalPath();
-                if (path != null)
-                {
-                    try { _repo.Save(_vm.Session, path); }
-                    catch (Exception ex) { await ShowError(ex.Message); }
-                }
-            }
+            await SaveSessionAsync();
         };
 
         this.FindControl<Button>("BtnGenerate")!.Click     += (_, _) => { _vm.GeneratePlan();  DrawCalendar(); };
@@ -96,7 +111,7 @@ public partial class MainWindow : Window
 
         this.FindControl<Button>("BtnManagePeople")!.Click += async (_, _) =>
         {
-            var dlg = new EmployeeManagerDialog(_vm) { };
+            var dlg = new EmployeeManagerDialog(_vm);
             await dlg.ShowDialog(this);
             DrawCalendar();
         };
@@ -124,6 +139,117 @@ public partial class MainWindow : Window
         CalendarCanvas.PointerReleased += OnCanvasPointerReleased;
 
         SizeChanged += (_, _) => DrawCalendar();
+
+        // Prompt to save when closing
+        Closing += OnWindowClosing;
+    }
+
+    private async void OnWindowClosing(object? sender, WindowClosingEventArgs e)
+    {
+        if (!_vm.IsDirty) return;
+
+        // Cancel the close so we can show a dialog first
+        e.Cancel = true;
+
+        var result = await ShowSavePromptAsync();
+        if (result == SavePromptResult.Save)
+        {
+            var saved = await SaveSessionAsync();
+            if (saved) Close();
+        }
+        else if (result == SavePromptResult.Discard)
+        {
+            _vm.MarkClean(); // suppress re-entry
+            Close();
+        }
+        // Cancel: do nothing, window stays open
+    }
+
+    private enum SavePromptResult { Save, Discard, Cancel }
+
+    private async System.Threading.Tasks.Task<SavePromptResult> ShowSavePromptAsync()
+    {
+        var result = SavePromptResult.Cancel;
+        var dlg = new Window
+        {
+            Title  = "Unsaved changes",
+            Width  = 380,
+            Height = 160,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
+        };
+
+        var saveBtn    = new Button { Content = "Save",    Margin = new Thickness(4, 0) };
+        var discardBtn = new Button { Content = "Discard", Margin = new Thickness(4, 0) };
+        var cancelBtn  = new Button { Content = "Cancel",  Margin = new Thickness(4, 0) };
+
+        saveBtn.Click    += (_, _) => { result = SavePromptResult.Save;    dlg.Close(); };
+        discardBtn.Click += (_, _) => { result = SavePromptResult.Discard; dlg.Close(); };
+        cancelBtn.Click  += (_, _) => { result = SavePromptResult.Cancel;  dlg.Close(); };
+
+        dlg.Content = new StackPanel
+        {
+            Margin = new Thickness(20),
+            Spacing = 14,
+            Children =
+            {
+                new TextBlock { Text = "You have unsaved changes. Save before closing?", TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    Children = { saveBtn, discardBtn, cancelBtn }
+                }
+            }
+        };
+
+        await dlg.ShowDialog(this);
+        return result;
+    }
+
+    /// <summary>Saves the session. Returns true if the save succeeded.</summary>
+    private async System.Threading.Tasks.Task<bool> SaveSessionAsync()
+    {
+        // Reuse the known path if available
+        string? path = _currentFilePath;
+
+        if (string.IsNullOrEmpty(path))
+        {
+            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+            {
+                Title = "Save Planning Session",
+                DefaultExtension = "yaml",
+                FileTypeChoices = new[] { new FilePickerFileType("YAML") { Patterns = new[] { "*.yaml" } } }
+            });
+            path = file?.TryGetLocalPath();
+        }
+
+        if (path == null) return false;
+
+        try
+        {
+            _repo.Save(_vm.Session, path);
+            _currentFilePath = path;
+            _appSettings.LastFilePath = path;
+            _appSettings.Save();
+            _vm.MarkClean();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await ShowError(ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>If dirty, asks the user whether to discard changes. Returns true if it is safe to proceed.</summary>
+    private async System.Threading.Tasks.Task<bool> ConfirmDiscardChanges()
+    {
+        if (!_vm.IsDirty) return true;
+        var result = await ShowSavePromptAsync();
+        if (result == SavePromptResult.Save)
+            return await SaveSessionAsync();
+        return result == SavePromptResult.Discard;
     }
 
     // -------------------------------------------------------------------------

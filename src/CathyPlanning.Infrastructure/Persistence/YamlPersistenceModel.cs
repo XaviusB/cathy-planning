@@ -34,6 +34,7 @@ public class YamlEmployee
     public string Name { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public double MaxWeeklyHours { get; set; } = 40;
+    public double? MinWeeklyRestHours { get; set; }
 }
 
 public class YamlShift

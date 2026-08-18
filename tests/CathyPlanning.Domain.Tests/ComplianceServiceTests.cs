@@ -75,21 +75,42 @@ public class ComplianceServiceTests
     }
 
     [Fact]
-    public void MultipleEmployees_EachEvaluatedIndependently()
+    public void PerEmployee_MinWeeklyRestHours_OverridesSessionDefault_WhenLower()
     {
-        var session = CreateSession();
-        var emp1 = new Employee { Id = Guid.NewGuid(), Name = "Eve" };
-        var emp2 = new Employee { Id = Guid.NewGuid(), Name = "Frank" };
-        session.Employees.AddRange(new[] { emp1, emp2 });
+        // Session default requires 35h weekly rest; employee overrides to 10h.
+        // A shift pattern that violates 35h but not 10h should produce no violation.
+        var session = CreateSession(weekCount: 2);
+        var emp = new Employee { Id = Guid.NewGuid(), Name = "Grace", MinWeeklyRestHours = 10 };
+        session.Employees.Add(emp);
 
-        // emp1 has a violation
-        session.Shifts.Add(new ShiftAssignment { EmployeeId = emp1.Id, Start = new DateTime(2024, 1, 1, 8, 0, 0), End = new DateTime(2024, 1, 1, 16, 0, 0) });
-        session.Shifts.Add(new ShiftAssignment { EmployeeId = emp1.Id, Start = new DateTime(2024, 1, 2, 0, 0, 0), End = new DateTime(2024, 1, 2, 8, 0, 0) });
-
-        // emp2 is fine
-        session.Shifts.Add(new ShiftAssignment { EmployeeId = emp2.Id, Start = new DateTime(2024, 1, 1, 6, 0, 0), End = new DateTime(2024, 1, 1, 14, 0, 0) });
+        // Shifts every day from Mon–Sat (Jan 1–6), leaving only 16h gap max — violates 35h but not 10h
+        for (int d = 0; d < 6; d++)
+        {
+            var start = new DateTime(2024, 1, 1).AddDays(d).AddHours(8);
+            session.Shifts.Add(new ShiftAssignment { EmployeeId = emp.Id, Start = start, End = start.AddHours(8) });
+        }
 
         var report = _svc.Evaluate(session);
-        report.Violations.Should().OnlyContain(v => v.EmployeeId == emp1.Id);
+        report.Violations.Where(v => v.Message.Contains("weekly rest")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PerEmployee_MinWeeklyRestHours_OverridesSessionDefault_WhenHigher()
+    {
+        // Session default requires 35h; employee overrides to 50h.
+        // Shifts Mon–Sat leave a max gap of ~32h (last shift ends Sat 16:00, week ends Sun midnight = 32h).
+        // 32h satisfies 35h default but NOT 50h override → should produce a violation.
+        var session = CreateSession(weekCount: 2);
+        var emp = new Employee { Id = Guid.NewGuid(), Name = "Henry", MinWeeklyRestHours = 50 };
+        session.Employees.Add(emp);
+
+        for (int d = 0; d < 6; d++)
+        {
+            var start = new DateTime(2024, 1, 1).AddDays(d).AddHours(8);
+            session.Shifts.Add(new ShiftAssignment { EmployeeId = emp.Id, Start = start, End = start.AddHours(8) });
+        }
+
+        var report = _svc.Evaluate(session);
+        report.Violations.Should().Contain(v => v.EmployeeId == emp.Id && v.Message.Contains("weekly rest"));
     }
 }

@@ -37,8 +37,8 @@ public class ComplianceService
                 {
                     var prev = allEmpShifts[i - 1];
                     var curr = allEmpShifts[i];
-                    // Only report violation if it falls within the period
-                    if (curr.Start < periodEnd && prev.End > periodStart)
+                    // Only report violation when the gap-ending shift (curr) is within the period
+                    if (curr.Start >= periodStart && curr.Start < periodEnd)
                     {
                         var rest = curr.Start - prev.End;
                         if (rest < rule.MinRestBetweenShifts)
@@ -56,8 +56,11 @@ public class ComplianceService
                     }
                 }
 
-                // Check weekly rest
-                CheckWeeklyRest(employee, allEmpShifts, rule, session.Rotation, violations, empViolations, periodStart, periodEnd);
+                // Check weekly rest (use per-employee override if set, otherwise fall back to rule default)
+                var effectiveWeeklyRest = employee.MinWeeklyRestHours.HasValue
+                    ? TimeSpan.FromHours(employee.MinWeeklyRestHours.Value)
+                    : rule.MinWeeklyRest;
+                CheckWeeklyRest(employee, allEmpShifts, rule, effectiveWeeklyRest, session.Rotation, violations, empViolations, periodStart, periodEnd);
             }
 
             summaries.Add(new EmployeeHoursSummary
@@ -77,6 +80,7 @@ public class ComplianceService
         Employee employee,
         List<ShiftAssignment> orderedShifts,
         RestRule rule,
+        TimeSpan effectiveWeeklyRest,
         RotationDefinition rotation,
         List<ComplianceViolation> violations,
         List<ComplianceViolation> empViolations,
@@ -101,8 +105,18 @@ public class ComplianceService
             double maxRestHours = 0;
 
             var prevShift = orderedShifts.LastOrDefault(s => s.End <= weekStart);
-            var gapBefore = weekShifts.First().Start - (prevShift?.End ?? weekStart);
-            maxRestHours = Math.Max(maxRestHours, gapBefore.TotalHours);
+            // If no prior shift, treat the gap before the first shift as unconstrained (compliant)
+            if (prevShift != null)
+            {
+                var gapBefore = weekShifts.First().Start - prevShift.End;
+                maxRestHours = Math.Max(maxRestHours, gapBefore.TotalHours);
+            }
+            else
+            {
+                // No shift before the week: treat as if rest extends back to rotation start
+                var gapBefore = weekShifts.First().Start - rotation.StartDate;
+                maxRestHours = Math.Max(maxRestHours, gapBefore.TotalHours);
+            }
 
             var nextShift = orderedShifts.FirstOrDefault(s => s.Start >= weekEnd);
             var gapAfter = (nextShift?.Start ?? weekEnd) - weekShifts.Last().End;
@@ -111,14 +125,14 @@ public class ComplianceService
             for (int i = 1; i < weekShifts.Count; i++)
                 maxRestHours = Math.Max(maxRestHours, (weekShifts[i].Start - weekShifts[i - 1].End).TotalHours);
 
-            if (maxRestHours < rule.MinWeeklyRest.TotalHours)
+            if (maxRestHours < effectiveWeeklyRest.TotalHours)
             {
                 var v = new ComplianceViolation
                 {
                     EmployeeId = employee.Id,
                     EmployeeName = employee.Name,
                     Severity = ComplianceSeverity.Error,
-                    Message = $"Insufficient weekly rest in week starting {weekStart:d}: max contiguous rest is {maxRestHours:F1}h, minimum required: {rule.MinWeeklyRest.TotalHours}h."
+                    Message = $"Insufficient weekly rest in week starting {weekStart:d}: max contiguous rest is {maxRestHours:F1}h, minimum required: {effectiveWeeklyRest.TotalHours}h."
                 };
                 violations.Add(v);
                 empViolations.Add(v);

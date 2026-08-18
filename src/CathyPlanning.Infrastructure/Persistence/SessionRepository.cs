@@ -52,7 +52,8 @@ public class SessionRepository
             Id = e.Id.ToString(),
             Name = e.Name,
             Role = e.Role,
-            MaxWeeklyHours = e.MaxWeeklyHours
+            MaxWeeklyHours = e.MaxWeeklyHours,
+            MinWeeklyRestHours = e.MinWeeklyRestHours
         }).ToList(),
         Shifts = s.Shifts.Select(sh => new YamlShift
         {
@@ -84,7 +85,8 @@ public class SessionRepository
             Id = Guid.TryParse(e.Id, out var eid) ? eid : Guid.NewGuid(),
             Name = e.Name,
             Role = e.Role,
-            MaxWeeklyHours = e.MaxWeeklyHours
+            MaxWeeklyHours = e.MaxWeeklyHours,
+            MinWeeklyRestHours = e.MinWeeklyRestHours
         }).ToList(),
         Shifts = m.Shifts.Select(sh => new ShiftAssignment
         {

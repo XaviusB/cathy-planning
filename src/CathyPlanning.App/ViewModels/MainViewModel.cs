@@ -26,6 +26,7 @@ public class MainViewModel : INotifyPropertyChanged
     private DateTime _displayWeekStart;
     private ReportPeriod _selectedPeriod = ReportPeriod.Week;
     private ComplianceReport? _lastReport;
+    private bool _isDirty;
 
     public MainViewModel()
     {
@@ -35,6 +36,16 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public PlanningSession Session => _session;
+
+    /// <summary>True when there are unsaved changes.</summary>
+    public bool IsDirty
+    {
+        get => _isDirty;
+        private set { _isDirty = value; OnPropertyChanged(); }
+    }
+
+    /// <summary>Marks the session as clean (called after a successful save).</summary>
+    public void MarkClean() => IsDirty = false;
 
     /// <summary>The compliance report computed during the last <see cref="RefreshSummaries"/> call.</summary>
     public ComplianceReport? LastReport => _lastReport;
@@ -118,6 +129,7 @@ public class MainViewModel : INotifyPropertyChanged
         var duration = shift.Duration;
         shift.Start = newStart;
         shift.End = newStart + duration;
+        MarkDirty();
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
     }
@@ -127,6 +139,7 @@ public class MainViewModel : INotifyPropertyChanged
         if (newEnd > shift.Start.AddMinutes(30))
         {
             shift.End = newEnd;
+            MarkDirty();
             RefreshSummaries();
             OnPropertyChanged(nameof(ShiftsChangedMarker));
         }
@@ -141,6 +154,7 @@ public class MainViewModel : INotifyPropertyChanged
             End = end,
             Label = label
         });
+        MarkDirty();
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
     }
@@ -153,6 +167,7 @@ public class MainViewModel : INotifyPropertyChanged
         shift.Start = start;
         shift.End = end;
         shift.Label = label;
+        MarkDirty();
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
     }
@@ -161,6 +176,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         var shift = _session.Shifts.FirstOrDefault(s => s.Id == shiftId);
         if (shift != null) _session.Shifts.Remove(shift);
+        MarkDirty();
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
     }
@@ -168,6 +184,7 @@ public class MainViewModel : INotifyPropertyChanged
     public void GeneratePlan()
     {
         _plannerService.GeneratePlan(_session);
+        MarkDirty();
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
     }
@@ -176,6 +193,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         _session = session;
         _displayWeekStart = session.Rotation.StartDate;
+        IsDirty = false;
         OnPropertyChanged(nameof(Session));
         OnPropertyChanged(nameof(Employees));
         OnPropertyChanged(nameof(WeekLabel));
@@ -185,9 +203,10 @@ public class MainViewModel : INotifyPropertyChanged
 
     // --- Employee management ---
 
-    public void AddEmployee(string name, string role, double maxWeeklyHours)
+    public void AddEmployee(string name, string role, double maxWeeklyHours, double? minWeeklyRestHours = null)
     {
-        _session.Employees.Add(new Employee { Name = name, Role = role, MaxWeeklyHours = maxWeeklyHours });
+        _session.Employees.Add(new Employee { Name = name, Role = role, MaxWeeklyHours = maxWeeklyHours, MinWeeklyRestHours = minWeeklyRestHours });
+        MarkDirty();
         OnPropertyChanged(nameof(Employees));
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
@@ -200,18 +219,21 @@ public class MainViewModel : INotifyPropertyChanged
         _session.Employees.Remove(emp);
         // Also remove the employee's shifts
         _session.Shifts.RemoveAll(s => s.EmployeeId == id);
+        MarkDirty();
         OnPropertyChanged(nameof(Employees));
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
     }
 
-    public void UpdateEmployee(Guid id, string name, string role, double maxWeeklyHours)
+    public void UpdateEmployee(Guid id, string name, string role, double maxWeeklyHours, double? minWeeklyRestHours = null)
     {
         var emp = _session.Employees.FirstOrDefault(e => e.Id == id);
         if (emp == null) return;
         emp.Name = name;
         emp.Role = role;
         emp.MaxWeeklyHours = maxWeeklyHours;
+        emp.MinWeeklyRestHours = minWeeklyRestHours;
+        MarkDirty();
         OnPropertyChanged(nameof(Employees));
         RefreshSummaries();
         OnPropertyChanged(nameof(ShiftsChangedMarker));
@@ -239,6 +261,11 @@ public class MainViewModel : INotifyPropertyChanged
             ComplianceSummary = string.Join("\n", report.Violations.Select(v =>
                 $"{(v.Severity == Domain.Services.ComplianceSeverity.Error ? "❌" : "⚠️")} {v.EmployeeName}: {v.Message}"));
         }
+    }
+
+    private void MarkDirty()
+    {
+        IsDirty = true;
     }
 
     private static PlanningSession CreateDefaultSession()
