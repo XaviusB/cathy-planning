@@ -11,7 +11,6 @@ using Avalonia.Platform.Storage;
 using CathyPlanning.App.Dialogs;
 using CathyPlanning.App.ViewModels;
 using CathyPlanning.Domain.Entities;
-using CathyPlanning.Domain.Services;
 using CathyPlanning.Infrastructure.Persistence;
 
 namespace CathyPlanning.App;
@@ -105,17 +104,17 @@ public partial class MainWindow : Window
         // Period radio buttons
         this.FindControl<RadioButton>("RbDay")!.IsCheckedChanged += (s, _) =>
         {
-            if (this.FindControl<RadioButton>("RbDay")!.IsChecked == true)
+            if (s is RadioButton { IsChecked: true })
             { _vm.SelectedPeriod = ReportPeriod.Day; RefreshReport(); }
         };
         this.FindControl<RadioButton>("RbWeek")!.IsCheckedChanged += (s, _) =>
         {
-            if (this.FindControl<RadioButton>("RbWeek")!.IsChecked == true)
+            if (s is RadioButton { IsChecked: true })
             { _vm.SelectedPeriod = ReportPeriod.Week; RefreshReport(); }
         };
         this.FindControl<RadioButton>("RbMonth")!.IsCheckedChanged += (s, _) =>
         {
-            if (this.FindControl<RadioButton>("RbMonth")!.IsChecked == true)
+            if (s is RadioButton { IsChecked: true })
             { _vm.SelectedPeriod = ReportPeriod.Month; RefreshReport(); }
         };
 
@@ -206,11 +205,11 @@ public partial class MainWindow : Window
     {
         _vm.RefreshSummaries();
 
-        var panel = this.FindControl<StackPanel>("ReportTablePanel")!;
+        var panel  = this.FindControl<StackPanel>("ReportTablePanel")!;
         panel.Children.Clear();
 
-        var (start, end) = _vm.GetReportRange();
-        var report = new ComplianceService().EvaluateForPeriod(_vm.Session, start, end);
+        var report = _vm.LastReport;
+        if (report == null) return;
 
         // Header row
         panel.Children.Add(BuildReportRow(true, "Employee", "Hours", "Max", "%", "Viol."));

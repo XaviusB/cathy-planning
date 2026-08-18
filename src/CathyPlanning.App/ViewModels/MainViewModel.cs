@@ -25,6 +25,7 @@ public class MainViewModel : INotifyPropertyChanged
     private string _hoursSummary = string.Empty;
     private DateTime _displayWeekStart;
     private ReportPeriod _selectedPeriod = ReportPeriod.Week;
+    private ComplianceReport? _lastReport;
 
     public MainViewModel()
     {
@@ -34,6 +35,9 @@ public class MainViewModel : INotifyPropertyChanged
     }
 
     public PlanningSession Session => _session;
+
+    /// <summary>The compliance report computed during the last <see cref="RefreshSummaries"/> call.</summary>
+    public ComplianceReport? LastReport => _lastReport;
 
     public DateTime DisplayWeekStart
     {
@@ -219,6 +223,7 @@ public class MainViewModel : INotifyPropertyChanged
     {
         var (start, end) = GetReportRange();
         var report = _complianceService.EvaluateForPeriod(_session, start, end);
+        _lastReport = report;
 
         var hours = string.Join("\n", report.HoursSummaries.Select(s =>
             $"{s.EmployeeName}: {s.TotalHours:F1}h / {s.MaxWeeklyHours}h ({s.PercentUsed:F0}%)"));
