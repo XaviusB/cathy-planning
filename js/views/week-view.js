@@ -1,7 +1,7 @@
 import { state } from '../state.js';
 import { HOUR_START, HOUR_END, DAY_NAMES_SHORT } from '../constants.js';
 import { getWeekStart, addDays, formatDate, sameDay, timeToMin } from '../utils/date.js';
-import { escapeHtml, getContrastColor } from '../utils/dom.js';
+import { escapeHtml, getContrastColor, effectiveSlotColor, slotBackground } from '../utils/dom.js';
 import { openSlotModal } from '../modals/slot-modal.js';
 import { startDrag } from '../drag/slot-drag.js';
 import { startGridDraw } from '../drag/grid-draw.js';
@@ -86,12 +86,16 @@ function _renderSlots(days) {
       el.dataset.slotId = slot.id;
       el.style.top = `${top}%`;
       el.style.height = `${Math.max(height, 1.2)}%`;
-      el.style.background = slot.color || '#4f86f7';
-      el.style.color = getContrastColor(slot.color || '#4f86f7');
 
       const assignedUsers = (slot.userIds || [])
         .map((id) => state.users.find((u) => u.id === id))
         .filter(Boolean);
+
+      // Primary color used for text contrast; background may be a gradient
+      const primaryColor = effectiveSlotColor(slot, state.users);
+      el.style.background = slotBackground(slot, state.users);
+      el.style.color = getContrastColor(primaryColor);
+      el.style.borderLeftColor = primaryColor;
       const userDots = assignedUsers
         .map((u) => `<span class="slot-user-dot" style="background:${u.color}" title="${u.name}"></span>`)
         .join('');

@@ -578,6 +578,26 @@ h1 {
   color: var(--primary);
 }
 
+.multi-user-toggle {
+  margin-top: 6px;
+  padding: 5px 10px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.multi-user-toggle label {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--text-muted) !important;
+  cursor: pointer;
+  padding: 0 !important;
+  background: none !important;
+  border: none !important;
+}
+
 .modal-footer {
   display: flex;
   justify-content: flex-end;

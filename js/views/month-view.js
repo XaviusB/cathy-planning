@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { addDays, formatDate, sameDay } from '../utils/date.js';
-import { escapeHtml, getContrastColor } from '../utils/dom.js';
+import { escapeHtml, getContrastColor, effectiveSlotColor, slotBackground } from '../utils/dom.js';
 import { openSlotModal } from '../modals/slot-modal.js';
 
 export function renderMonthView() {
@@ -37,8 +37,10 @@ export function renderMonthView() {
     html += `<div class="month-cell${isToday ? ' today' : ''}${isOther ? ' other-month' : ''}" data-date="${dateStr}" onclick="handleMonthCellClick(event,'${dateStr}')">`;
     html += `<div class="month-day-num">${cellDate.getDate()}</div>`;
     daySlots.slice(0, MAX_SHOW).forEach((slot) => {
+      const bg = slotBackground(slot, state.users);
+      const textColor = getContrastColor(effectiveSlotColor(slot, state.users));
       html += `<span class="month-slot-pill"
-        style="background:${slot.color || '#4f86f7'};color:${getContrastColor(slot.color || '#4f86f7')}"
+        style="background:${bg};color:${textColor}"
         onclick="event.stopPropagation();openSlotModal('${slot.id}')">${escapeHtml(slot.title || 'Créneau')}</span>`;
     });
     if (daySlots.length > MAX_SHOW) {

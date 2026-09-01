@@ -1,3 +1,32 @@
+/**
+ * Retourne la couleur principale d'un créneau (pour le contraste du texte).
+ */
+export function effectiveSlotColor(slot, users) {
+  const firstUser = users.find((u) => (slot.userIds || []).includes(u.id));
+  return firstUser ? firstUser.color : (slot.color || '#94a3b8');
+}
+
+/**
+ * Retourne la valeur CSS `background` d'un créneau.
+ * - 0 utilisateur : couleur neutre
+ * - 1 utilisateur : couleur de l'utilisateur
+ * - N utilisateurs : bandes verticales (une couleur par utilisateur)
+ */
+export function slotBackground(slot, users) {
+  const assigned = (slot.userIds || [])
+    .map((id) => users.find((u) => u.id === id))
+    .filter(Boolean);
+
+  if (assigned.length === 0) return slot.color || '#94a3b8';
+  if (assigned.length === 1) return assigned[0].color;
+
+  const pct = 100 / assigned.length;
+  const stops = assigned.map((u, i) =>
+    `${u.color} ${(i * pct).toFixed(2)}% ${((i + 1) * pct).toFixed(2)}%`
+  );
+  return `linear-gradient(to right, ${stops.join(', ')})`;
+}
+
 export function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
