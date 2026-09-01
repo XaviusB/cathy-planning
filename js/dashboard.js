@@ -1,7 +1,7 @@
-import { state } from '../state.js';
-import { MONTH_NAMES, DAY_NAMES } from '../constants.js';
-import { getWeekStart, addDays, formatDate, slotDurationMin, timeToMin, parseDate } from '../utils/date.js';
-import { escapeHtml, userInitials } from '../utils/dom.js';
+import { state } from './state.js';
+import { MONTH_NAMES, DAY_NAMES } from './constants.js';
+import { getWeekStart, addDays, formatDate, slotDurationMin, timeToMin, parseDate } from './utils/date.js';
+import { escapeHtml, userInitials } from './utils/dom.js';
 
 export function renderDashboard() {
   const container = document.getElementById('dashboard-content');
