@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planning Partagé</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1>📅 Planning Partagé</h1>
+        <div class="view-switcher">
+          <button id="btn-week" class="view-btn active" onclick="setView('week')">Semaine</button>
+          <button id="btn-month" class="view-btn" onclick="setView('month')">Mois</button>
+        </div>
+        <div class="nav-controls">
+          <button class="nav-btn" onclick="navigate(-1)">‹</button>
+          <span id="current-period"></span>
+          <button class="nav-btn" onclick="navigate(1)">›</button>
+          <button class="nav-btn today-btn" onclick="goToToday()">Aujourd'hui</button>
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-primary" onclick="openSlotModal(null, null)">+ Créneau</button>
+        <button class="btn btn-secondary" onclick="autoFillWeek()">🪄 Remplir auto</button>
+        <button class="btn btn-secondary" onclick="openUsersModal()">👥 Utilisateurs</button>
+        <button class="btn btn-secondary" onclick="exportData()">💾 Exporter</button>
+        <label class="btn btn-secondary" style="cursor:pointer">
+          📂 Importer
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)" />
+        </label>
+      </div>
+    </header>
+
+    <!-- Main layout -->
+    <div class="main-layout">
+      <!-- Calendar area -->
+      <div class="calendar-area">
+        <div id="week-view" class="calendar-view"></div>
+        <div id="month-view" class="calendar-view hidden"></div>
+      </div>
+
+      <!-- Right panel -->
+      <aside class="right-panel">
+        <h2>Tableau de bord</h2>
+        <div id="dashboard-content"></div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+    <!-- Slot modal -->
+    <div id="slot-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3 id="slot-modal-title">Nouveau créneau</h3>
+        <button class="modal-close" onclick="closeAllModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Titre <input type="text" id="slot-title" placeholder="ex: Matin" /></label>
+        <label>Date <input type="date" id="slot-date" /></label>
+        <label>Heure début <input type="time" id="slot-start" /></label>
+        <label>Heure fin <input type="time" id="slot-end" /></label>
+        <label>Utilisateurs assignés
+          <div id="slot-users-checkboxes" class="checkbox-group"></div>
+        </label>
+        <label>Couleur <input type="color" id="slot-color" value="#4f86f7" /></label>
+        <label>Notes <textarea id="slot-notes" rows="2" placeholder="Notes optionnelles..."></textarea></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="slot-delete-btn" onclick="deleteSlot()" style="display:none">Supprimer</button>
+        <button class="btn btn-secondary" onclick="closeAllModals()">Annuler</button>
+        <button class="btn btn-primary" onclick="saveSlot()">Enregistrer</button>
+      </div>
+    </div>
+
+    <!-- Users modal -->
+    <div id="users-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3>Gestion des utilisateurs</h3>
+        <button class="modal-close" onclick="closeAllModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="users-list"></div>
+        <hr />
+        <h4 id="user-form-title">Ajouter un utilisateur</h4>
+        <label>Nom <input type="text" id="user-name" placeholder="Nom complet" /></label>
+        <label>Couleur <input type="color" id="user-color" value="#4f86f7" /></label>
+        <label>Max heures/semaine <input type="number" id="user-max-hours" value="35" min="1" max="168" /></label>
+        <label>Repos quotidien min (h) <input type="number" id="user-rest-hours" value="11" min="0" max="24" /></label>
+        <label>Max heures/jour <input type="number" id="user-max-daily" value="10" min="1" max="24" /></label>
+        <div class="modal-footer" style="padding:0;border:none;margin-top:12px">
+          <button class="btn btn-secondary" id="user-cancel-edit-btn" style="display:none" onclick="cancelEditUser()">Annuler</button>
+          <button class="btn btn-primary" onclick="saveUser()">Enregistrer</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirm modal -->
+    <div id="confirm-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3 id="confirm-modal-title">Confirmation</h3>
+        <button class="modal-close" onclick="resolveConfirm(false)">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-modal-message" style="color:var(--text);font-size:14px;line-height:1.5"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="resolveConfirm(false)">Annuler</button>
+        <button id="confirm-modal-ok" class="btn btn-danger" onclick="resolveConfirm(true)">Supprimer</button>
+      </div>
+    </div>
+
+    <!-- Auto-fill modal -->
+    <div id="autofill-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3>🪄 Remplissage automatique</h3>
+        <button class="modal-close" onclick="closeAllModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Configurer les paramètres du remplissage automatique pour la semaine en cours.</p>
+        <label>Heure de début <input type="time" id="af-start" value="08:00" /></label>
+        <label>Heure de fin <input type="time" id="af-end" value="18:00" /></label>
+        <label>Durée d'un créneau (minutes) <input type="number" id="af-duration" value="60" min="15" step="15" /></label>
+        <label>Jours à remplir
+          <div class="checkbox-group" id="af-days">
+            <label><input type="checkbox" value="1" checked /> Lundi</label>
+            <label><input type="checkbox" value="2" checked /> Mardi</label>
+            <label><input type="checkbox" value="3" checked /> Mercredi</label>
+            <label><input type="checkbox" value="4" checked /> Jeudi</label>
+            <label><input type="checkbox" value="5" checked /> Vendredi</label>
+            <label><input type="checkbox" value="6" /> Samedi</label>
+            <label><input type="checkbox" value="0" /> Dimanche</label>
+          </div>
+        </label>
+        <label>Titre du créneau <input type="text" id="af-title" value="Disponible" /></label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAllModals()">Annuler</button>
+        <button class="btn btn-primary" onclick="confirmAutoFill()">Remplir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag ghost -->
+  <div id="drag-ghost" class="drag-ghost hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
