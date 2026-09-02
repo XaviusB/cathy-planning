@@ -1,5 +1,5 @@
 import { setRenderAll } from './renderer.js';
-import { loadData, saveData, exportData, importData, state } from './state.js';
+import { loadData, saveData, exportData, importData, resetData, state } from './state.js';
 import { renderCalendar } from './calendar.js';
 import { renderWeekView } from './views/week-view.js';
 import { setView, navigate, goToToday } from './calendar.js';
@@ -15,7 +15,7 @@ import {
   applyDateRange,
 } from './modals/date-range-modal.js';
 import { clearDashboardRange } from './dashboard.js';
-import { resolveConfirm, isConfirmOpen } from './modals/confirm.js';
+import { resolveConfirm, isConfirmOpen, showConfirm } from './modals/confirm.js';
 import { dragState, cancelDrag } from './drag/slot-drag.js';
 import { resizeState, cancelResize } from './drag/slot-resize.js';
 import { startUserDrag } from './drag/user-drag.js';
@@ -41,6 +41,7 @@ window.removeUser = removeUser;
 window.autoFillWeek = autoFillWeek;
 window.confirmAutoFill = confirmAutoFill;
 window.exportData = exportData;
+window.resetAllData = resetAllData;
 window.exportWeekPdf = exportWeekPdf;
 window.importData = importData;
 window.closeAllModals = closeAllModals;
@@ -57,6 +58,16 @@ window.setTheme = setTheme;
 window.toggleMainMenu = toggleMainMenu;
 window.closeMainMenu = closeMainMenu;
 window.toggleSubmenu = toggleSubmenu;
+
+async function resetAllData() {
+  const confirmed = await showConfirm(
+    'Cette action supprimera tous les utilisateurs et tous les créneaux, et réinitialisera la période du tableau de bord.',
+    'Réinitialiser toutes les données',
+    'Réinitialiser',
+    'btn-danger',
+  );
+  if (confirmed) resetData();
+}
 
 // ─── Modal overlay click handler ─────────────────────────────────────────────
 function closeModal(e) {

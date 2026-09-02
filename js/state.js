@@ -48,6 +48,16 @@ export function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ users: state.users, slots: state.slots }));
 }
 
+export function resetData() {
+  state.users = [];
+  state.slots = [];
+  state.dashboardRange = null;
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(DASHBOARD_RANGE_KEY);
+  renderAll();
+  showToast('Toutes les données ont été réinitialisées');
+}
+
 export function exportData() {
   const json = JSON.stringify({ users: state.users, slots: state.slots }, null, 2);
   const blob = new Blob([json], { type: 'application/json' });

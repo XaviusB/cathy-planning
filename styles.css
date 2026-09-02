@@ -169,6 +169,7 @@ h1 {
 }
 .dropdown-item:hover { background: var(--surface2); }
 .dropdown-item.active { color: var(--primary); font-weight: 600; }
+.dropdown-item.danger { color: var(--danger); }
 .dropdown-caret { color: var(--text-muted); font-size: 12px; }
 .dropdown-submenu-panel {
   position: absolute;
