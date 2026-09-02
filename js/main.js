@@ -11,6 +11,7 @@ import { resolveConfirm, isConfirmOpen } from './modals/confirm.js';
 import { dragState, cancelDrag } from './drag/slot-drag.js';
 import { startUserDrag } from './drag/user-drag.js';
 import { handleMonthCellClick } from './views/month-view.js';
+import { exportWeekPdf } from './export-pdf.js';
 
 // Wire the renderer so all modules can call renderAll() without circular deps
 setRenderAll(renderCalendar);
@@ -30,6 +31,7 @@ window.removeUser = removeUser;
 window.autoFillWeek = autoFillWeek;
 window.confirmAutoFill = confirmAutoFill;
 window.exportData = exportData;
+window.exportWeekPdf = exportWeekPdf;
 window.importData = importData;
 window.closeAllModals = closeAllModals;
 window.closeModal = closeModal;
