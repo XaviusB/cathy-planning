@@ -52,7 +52,7 @@ export function startDrag(e, slot) {
       return { col, date: col.dataset.date, startMin };
     }
 
-    const cell = target.closest('.month-cell');
+    const cell = target.closest('.agenda-track');
     if (!cell) return null;
     return { cell, date: cell.dataset.date };
   };
@@ -81,7 +81,7 @@ export function startDrag(e, slot) {
     document.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
     const target = document.elementFromPoint(ev.clientX, ev.clientY);
     if (target) {
-      const col = target.closest('.week-day-col') || target.closest('.month-cell');
+      const col = target.closest('.week-day-col') || target.closest('.agenda-track');
       if (col) col.classList.add('drop-target');
     }
 

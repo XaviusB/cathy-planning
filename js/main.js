@@ -21,6 +21,7 @@ import { resizeState, cancelResize } from './drag/slot-resize.js';
 import { startUserDrag } from './drag/user-drag.js';
 import { handleMonthCellClick } from './views/month-view.js';
 import { exportWeekPdf } from './export-pdf.js';
+import { initTheme, setTheme, toggleMainMenu, closeMainMenu, toggleSubmenu } from './menu.js';
 
 // Wire the renderer so all modules can call renderAll() without circular deps
 setRenderAll(renderCalendar);
@@ -52,6 +53,10 @@ window.navigateDateRangeMonths = navigateDateRangeMonths;
 window.selectDateRangeDay = selectDateRangeDay;
 window.applyDateRange = applyDateRange;
 window.clearDashboardRange = clearDashboardRange;
+window.setTheme = setTheme;
+window.toggleMainMenu = toggleMainMenu;
+window.closeMainMenu = closeMainMenu;
+window.toggleSubmenu = toggleSubmenu;
 
 // ─── Modal overlay click handler ─────────────────────────────────────────────
 function closeModal(e) {
@@ -65,6 +70,7 @@ function closeModal(e) {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
+  initTheme();
   loadData();
   renderCalendar();
 
@@ -83,6 +89,7 @@ function init() {
       } else if (isConfirmOpen()) {
         resolveConfirm(false);
       } else {
+        closeMainMenu();
         closeAllModals();
       }
     }

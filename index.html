@@ -27,12 +27,40 @@
         <button class="btn btn-primary" onclick="openSlotModal(null, null)">+ Créneau</button>
         <button class="btn btn-secondary" onclick="autoFillWeek()">🪄 Remplir auto</button>
         <button class="btn btn-secondary" onclick="openUsersModal()">👥 Utilisateurs</button>
-        <button class="btn btn-secondary" onclick="exportData()">💾 Exporter</button>
-        <button class="btn btn-secondary" onclick="exportWeekPdf()">🧾 Export PDF (semaine)</button>
-        <label class="btn btn-secondary" style="cursor:pointer">
-          📂 Importer
-          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)" />
-        </label>
+        <div class="dropdown-menu" id="main-menu">
+          <button class="btn btn-secondary" onclick="toggleMainMenu(event)">☰ Menu</button>
+          <div class="dropdown-panel hidden" id="main-menu-panel">
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-data')">
+                💾 Sauvegarde &amp; restauration <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-data">
+                <button class="dropdown-item" onclick="exportData();closeMainMenu()">📤 Sauvegarder (export JSON)</button>
+                <label class="dropdown-item" style="cursor:pointer">
+                  📥 Restaurer (import JSON)
+                  <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event);closeMainMenu()" />
+                </label>
+              </div>
+            </div>
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-pdf')">
+                🧾 Export PDF <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-pdf">
+                <button class="dropdown-item" onclick="exportWeekPdf();closeMainMenu()">Semaine en cours (tous les utilisateurs)</button>
+              </div>
+            </div>
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-theme')">
+                🎨 Thème <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-theme">
+                <button class="dropdown-item" id="theme-item-light" onclick="setTheme('light');closeMainMenu()">☀️ Clair</button>
+                <button class="dropdown-item" id="theme-item-dark" onclick="setTheme('dark');closeMainMenu()">🌙 Sombre</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -156,7 +184,7 @@
     <!-- Date range picker modal -->
     <div id="date-range-modal" class="modal hidden">
       <div class="modal-header">
-        <h3>📊 Choisir une période</h3>
+        <h3>📅 Choisir une période</h3>
         <button class="modal-close" onclick="closeAllModals()">✕</button>
       </div>
       <div class="modal-body">
