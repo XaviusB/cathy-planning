@@ -440,6 +440,18 @@ h1 {
 .slot-resize-bottom { bottom: 0; }
 .slot-resize-handle:hover { background: rgba(255,255,255,0.35); }
 
+.slot-resize-left, .slot-resize-right {
+  top: 0;
+  bottom: 0;
+  left: auto;
+  right: auto;
+  width: 6px;
+  height: auto;
+  cursor: ew-resize;
+}
+.slot-resize-left { left: 0; }
+.slot-resize-right { right: 0; }
+
 .slot-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slot-time  { font-size: 10px; opacity: 0.8; }
 .slot-users { font-size: 10px; opacity: 0.85; margin-top: 1px; }
@@ -574,11 +586,17 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
+  cursor: grab;
   box-shadow: var(--shadow);
   min-width: 4px;
+  user-select: none;
+  transition: box-shadow 0.15s, transform 0.1s;
 }
 .agenda-slot-pill:hover { filter: brightness(0.92); z-index: 2; }
+.agenda-slot-pill:active { cursor: grabbing; }
+.agenda-slot-pill.dragging { opacity: 0.6; pointer-events: none; z-index: 5; }
+.agenda-slot-pill.resizing { opacity: 0.85; box-shadow: var(--shadow-lg); z-index: 5; }
+.agenda-slot-title { pointer-events: none; }
 
 /* =====================
    Drop zone highlight
@@ -889,6 +907,19 @@ h1 {
   font-weight: 600;
   color: var(--primary);
   white-space: nowrap;
+}
+
+.grid-selection-preview.horizontal {
+  left: auto;
+  right: auto;
+  top: 3px;
+  bottom: 3px;
+  transition: left 0.04s, width 0.04s;
+}
+.grid-selection-preview.horizontal::after {
+  top: auto;
+  bottom: 2px;
+  left: 4px;
 }
 
 /* User drag handle */

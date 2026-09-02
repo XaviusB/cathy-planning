@@ -3,6 +3,9 @@ import { HOUR_START, HOUR_END, DAY_NAMES_SHORT } from '../constants.js';
 import { formatDate, sameDay, timeToMin } from '../utils/date.js';
 import { escapeHtml, getContrastColor, effectiveSlotColor, slotBackground } from '../utils/dom.js';
 import { openSlotModal } from '../modals/slot-modal.js';
+import { startDrag } from '../drag/slot-drag.js';
+import { startResize } from '../drag/slot-resize.js';
+import { startGridDraw } from '../drag/grid-draw.js';
 
 // "Agenda" month view: one horizontal row per day of the month, each row showing
 // a 0h–24h timeline with slots positioned/sized proportionally to their time —
@@ -29,34 +32,18 @@ export function renderMonthView() {
     const cellDate = new Date(year, month, d);
     const dateStr = formatDate(cellDate);
     const isToday = sameDay(cellDate, today);
-    const daySlots = state.slots.filter((s) => s.date === dateStr);
 
     html += `<div class="agenda-row${isToday ? ' today' : ''}">`;
     html += `<div class="agenda-day-label" onclick="handleMonthCellClick(event,'${dateStr}')">
       <span class="agenda-day-name">${DAY_NAMES_SHORT[cellDate.getDay()]}</span>
       <span class="agenda-day-num">${d}</span>
     </div>`;
-    html += `<div class="agenda-track" data-date="${dateStr}" onclick="handleMonthCellClick(event,'${dateStr}')">`;
+    html += `<div class="agenda-track" data-date="${dateStr}">`;
 
     for (let h = HOUR_START; h < HOUR_END; h++) {
       const left = ((h - HOUR_START) / (HOUR_END - HOUR_START)) * 100;
       html += `<div class="agenda-hour-gridline" style="left:${left}%"></div>`;
     }
-
-    daySlots.forEach((slot) => {
-      const totalMin = (HOUR_END - HOUR_START) * 60;
-      const startMin = timeToMin(slot.start) - HOUR_START * 60;
-      const endMin = timeToMin(slot.end) - HOUR_START * 60;
-      const left = (startMin / totalMin) * 100;
-      const width = Math.max(((endMin - startMin) / totalMin) * 100, 0.8);
-
-      const bg = slotBackground(slot, state.users);
-      const textColor = getContrastColor(effectiveSlotColor(slot, state.users));
-      html += `<div class="agenda-slot-pill"
-        style="left:${left}%;width:${width}%;background:${bg};color:${textColor}"
-        title="${escapeHtml(slot.title || 'Créneau')} (${slot.start}–${slot.end})"
-        onclick="event.stopPropagation();openSlotModal('${slot.id}')">${escapeHtml(slot.title || 'Créneau')}</div>`;
-    });
 
     html += `</div></div>`;
   }
@@ -64,9 +51,57 @@ export function renderMonthView() {
   html += '</div>';
   container.innerHTML = html;
 
+  _renderSlots(year, month, lastDay.getDate());
+
   if (today.getFullYear() === year && today.getMonth() === month) {
     const todayRow = container.querySelector('.agenda-row.today');
     if (todayRow) todayRow.scrollIntoView({ block: 'center' });
+  }
+}
+
+function _renderSlots(year, month, numDays) {
+  const container = document.getElementById('month-view');
+  const tracks = container.querySelectorAll('.agenda-track');
+
+  for (let d = 1; d <= numDays; d++) {
+    const dateStr = formatDate(new Date(year, month, d));
+    const track = tracks[d - 1];
+    if (!track) continue;
+
+    const daySlots = state.slots.filter((s) => s.date === dateStr);
+    const totalMin = (HOUR_END - HOUR_START) * 60;
+
+    daySlots.forEach((slot) => {
+      const startMin = timeToMin(slot.start) - HOUR_START * 60;
+      const endMin = timeToMin(slot.end) - HOUR_START * 60;
+      const left = (startMin / totalMin) * 100;
+      const width = Math.max(((endMin - startMin) / totalMin) * 100, 0.8);
+
+      const bg = slotBackground(slot, state.users);
+      const textColor = getContrastColor(effectiveSlotColor(slot, state.users));
+
+      const el = document.createElement('div');
+      el.className = 'agenda-slot-pill';
+      el.dataset.slotId = slot.id;
+      el.style.left = `${left}%`;
+      el.style.width = `${width}%`;
+      el.style.background = bg;
+      el.style.color = textColor;
+      el.title = `${slot.title || 'Créneau'} (${slot.start}–${slot.end})`;
+      el.innerHTML = `
+        <div class="slot-resize-handle slot-resize-left"></div>
+        <span class="agenda-slot-title">${escapeHtml(slot.title || 'Créneau')}</span>
+        <div class="slot-resize-handle slot-resize-right"></div>
+      `;
+
+      el.addEventListener('click', (ev) => { ev.stopPropagation(); openSlotModal(slot.id); });
+      el.addEventListener('mousedown', (ev) => startDrag(ev, slot));
+      el.querySelector('.slot-resize-left').addEventListener('mousedown', (ev) => startResize(ev, slot, 'left'));
+      el.querySelector('.slot-resize-right').addEventListener('mousedown', (ev) => startResize(ev, slot, 'right'));
+      track.appendChild(el);
+    });
+
+    track.addEventListener('mousedown', (e) => startGridDraw(e, track));
   }
 }
 

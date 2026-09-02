@@ -15,10 +15,16 @@ export function startDrag(e, slot) {
   const dur = slotDurationMin(slot);
   let grabOffsetMin = 0;
   const slotEl = e.currentTarget;
+  const isAgendaPill = !!slotEl?.classList.contains('agenda-slot-pill');
   if (slotEl) {
     const rect = slotEl.getBoundingClientRect();
-    const relY = e.clientY - rect.top;
-    grabOffsetMin = Math.round((relY / rect.height) * dur / SNAP_MIN) * SNAP_MIN;
+    if (isAgendaPill) {
+      const relX = e.clientX - rect.left;
+      grabOffsetMin = Math.round((relX / rect.width) * dur / SNAP_MIN) * SNAP_MIN;
+    } else {
+      const relY = e.clientY - rect.top;
+      grabOffsetMin = Math.round((relY / rect.height) * dur / SNAP_MIN) * SNAP_MIN;
+    }
   }
 
   const startX = e.clientX;
@@ -54,16 +60,31 @@ export function startDrag(e, slot) {
 
     const cell = target.closest('.agenda-track');
     if (!cell) return null;
-    return { cell, date: cell.dataset.date };
+    const rect = cell.getBoundingClientRect();
+    const fraction = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+    const rawMin =
+      HOUR_START * 60 + Math.round((fraction * (HOUR_END - HOUR_START) * 60) / SNAP_MIN) * SNAP_MIN;
+    let startMin = Math.max(HOUR_START * 60, Math.min(HOUR_END * 60 - dur, rawMin - grabOffsetMin));
+    startMin = Math.round(startMin / SNAP_MIN) * SNAP_MIN;
+    return { cell, date: cell.dataset.date, startMin };
   };
 
   // Move the actual slot block to its future position so the user sees the result live.
   const applyPreview = (preview) => {
-    if (!slotEl || !preview || state.view !== 'week' || !preview.col) return;
-    if (slotEl.parentElement !== preview.col) preview.col.appendChild(slotEl);
-    const totalMin = (HOUR_END - HOUR_START) * 60;
-    const top = ((preview.startMin - HOUR_START * 60) / totalMin) * 100;
-    slotEl.style.top = `${top}%`;
+    if (!slotEl || !preview) return;
+    if (state.view === 'week') {
+      if (!preview.col) return;
+      if (slotEl.parentElement !== preview.col) preview.col.appendChild(slotEl);
+      const totalMin = (HOUR_END - HOUR_START) * 60;
+      const top = ((preview.startMin - HOUR_START * 60) / totalMin) * 100;
+      slotEl.style.top = `${top}%`;
+    } else {
+      if (!preview.cell) return;
+      if (slotEl.parentElement !== preview.cell) preview.cell.appendChild(slotEl);
+      const totalMin = (HOUR_END - HOUR_START) * 60;
+      const left = ((preview.startMin - HOUR_START * 60) / totalMin) * 100;
+      slotEl.style.left = `${left}%`;
+    }
   };
 
   const onMouseMove = (ev) => {
