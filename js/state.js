@@ -3,11 +3,14 @@ import { formatDate } from './utils/date.js';
 import { showToast } from './utils/dom.js';
 import { renderAll } from './renderer.js';
 
+const DASHBOARD_RANGE_KEY = 'planning_dashboard_range_v1';
+
 export const state = {
   users: [],
   slots: [],
   view: 'week',
   currentDate: new Date(),
+  dashboardRange: null,
 };
 
 export function loadData() {
@@ -20,6 +23,24 @@ export function loadData() {
     }
   } catch (e) {
     console.warn('Failed to load data', e);
+  }
+
+  try {
+    const rawRange = localStorage.getItem(DASHBOARD_RANGE_KEY);
+    if (rawRange) {
+      const r = JSON.parse(rawRange);
+      if (r && r.start && r.end) state.dashboardRange = r;
+    }
+  } catch (e) {
+    console.warn('Failed to load dashboard range', e);
+  }
+}
+
+export function saveDashboardRange() {
+  if (state.dashboardRange) {
+    localStorage.setItem(DASHBOARD_RANGE_KEY, JSON.stringify(state.dashboardRange));
+  } else {
+    localStorage.removeItem(DASHBOARD_RANGE_KEY);
   }
 }
 

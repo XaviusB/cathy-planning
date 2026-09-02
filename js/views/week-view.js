@@ -4,6 +4,7 @@ import { getWeekStart, addDays, formatDate, sameDay, timeToMin } from '../utils/
 import { escapeHtml, getContrastColor, effectiveSlotColor, slotBackground } from '../utils/dom.js';
 import { openSlotModal } from '../modals/slot-modal.js';
 import { startDrag } from '../drag/slot-drag.js';
+import { startResize } from '../drag/slot-resize.js';
 import { startGridDraw } from '../drag/grid-draw.js';
 
 export function renderWeekView() {
@@ -102,13 +103,17 @@ function _renderSlots(days) {
       const userNames = assignedUsers.map((u) => u.name).join(', ');
 
       el.innerHTML = `
+        <div class="slot-resize-handle slot-resize-top"></div>
         <div class="slot-title">${escapeHtml(slot.title || 'Créneau')}</div>
         <div class="slot-time">${slot.start}–${slot.end}</div>
         ${assignedUsers.length ? `<div class="slot-users">${userDots} ${escapeHtml(userNames)}</div>` : ''}
+        <div class="slot-resize-handle slot-resize-bottom"></div>
       `;
 
       el.addEventListener('click', (ev) => { ev.stopPropagation(); openSlotModal(slot.id); });
       el.addEventListener('mousedown', (ev) => startDrag(ev, slot));
+      el.querySelector('.slot-resize-top').addEventListener('mousedown', (ev) => startResize(ev, slot, 'top'));
+      el.querySelector('.slot-resize-bottom').addEventListener('mousedown', (ev) => startResize(ev, slot, 'bottom'));
       col.appendChild(el);
     });
 }

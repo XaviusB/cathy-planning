@@ -7,8 +7,17 @@ import { openSlotModal, saveSlot, deleteSlot } from './modals/slot-modal.js';
 import { openUsersModal, saveUser, cancelEditUser, editUser, removeUser } from './modals/user-modal.js';
 import { autoFillWeek, confirmAutoFill } from './modals/autofill-modal.js';
 import { showModal, closeAllModals } from './modals/modal.js';
+import {
+  openDateRangeModal,
+  resetDateRangeSelection,
+  navigateDateRangeMonths,
+  selectDateRangeDay,
+  applyDateRange,
+} from './modals/date-range-modal.js';
+import { clearDashboardRange } from './dashboard.js';
 import { resolveConfirm, isConfirmOpen } from './modals/confirm.js';
 import { dragState, cancelDrag } from './drag/slot-drag.js';
+import { resizeState, cancelResize } from './drag/slot-resize.js';
 import { startUserDrag } from './drag/user-drag.js';
 import { handleMonthCellClick } from './views/month-view.js';
 import { exportWeekPdf } from './export-pdf.js';
@@ -37,6 +46,12 @@ window.closeAllModals = closeAllModals;
 window.closeModal = closeModal;
 window.resolveConfirm = resolveConfirm;
 window.handleMonthCellClick = handleMonthCellClick;
+window.openDateRangeModal = openDateRangeModal;
+window.resetDateRangeSelection = resetDateRangeSelection;
+window.navigateDateRangeMonths = navigateDateRangeMonths;
+window.selectDateRangeDay = selectDateRangeDay;
+window.applyDateRange = applyDateRange;
+window.clearDashboardRange = clearDashboardRange;
 
 // ─── Modal overlay click handler ─────────────────────────────────────────────
 function closeModal(e) {
@@ -61,8 +76,15 @@ function init() {
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (isConfirmOpen()) resolveConfirm(false);
-      else closeAllModals();
+      if (resizeState) {
+        if (cancelResize) cancelResize();
+      } else if (dragState) {
+        if (cancelDrag) cancelDrag();
+      } else if (isConfirmOpen()) {
+        resolveConfirm(false);
+      } else {
+        closeAllModals();
+      }
     }
 
     // Hold click on slot + Delete → delete the slot

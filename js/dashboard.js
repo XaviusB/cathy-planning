@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state, saveDashboardRange } from './state.js';
 import { MONTH_NAMES, DAY_NAMES } from './constants.js';
 import { getWeekStart, addDays, formatDate, slotDurationMin, timeToMin, parseDate } from './utils/date.js';
 import { escapeHtml, userInitials } from './utils/dom.js';
@@ -11,13 +11,26 @@ export function renderDashboard() {
     return;
   }
 
-  const ws = getWeekStart(state.currentDate);
-  const we = addDays(ws, 6);
-  const wsStr = formatDate(ws);
-  const weStr = formatDate(we);
+  let ws, we, wsStr, weStr, periodLabel;
+  if (state.dashboardRange) {
+    wsStr = state.dashboardRange.start;
+    weStr = state.dashboardRange.end;
+    ws = parseDate(wsStr);
+    we = parseDate(weStr);
+    periodLabel = wsStr === weStr
+      ? `Le ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} ${ws.getFullYear()}`
+      : `Du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} au ${we.getDate()} ${MONTH_NAMES[we.getMonth()]} ${we.getFullYear()}`;
+  } else {
+    ws = getWeekStart(state.currentDate);
+    we = addDays(ws, 6);
+    wsStr = formatDate(ws);
+    weStr = formatDate(we);
+    periodLabel = `Semaine du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]}`;
+  }
 
-  let html = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
-    Semaine du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]}
+  let html = `<div class="dashboard-period-label">
+    <span>${periodLabel}</span>
+    ${state.dashboardRange ? `<button type="button" class="dashboard-period-clear" onclick="clearDashboardRange()" title="Revenir à la semaine en cours">✕</button>` : ''}
   </div>`;
 
   state.users.forEach((user) => {
@@ -38,13 +51,15 @@ export function renderDashboard() {
           ? 'var(--warning)'
           : 'var(--success)';
 
+    const periodStatLabel = state.dashboardRange ? 'Période' : 'Semaine';
+
     html += `<div class="user-card">
       <div class="user-card-header">
         <div class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser vers le planning">${userInitials(user.name)}</div>
         <div class="user-card-name">${escapeHtml(user.name)}</div>
         <span class="user-drag-hint" title="Glisser pour créer/assigner un créneau">⠿</span>
       </div>
-      <div class="user-stat"><span>Semaine</span><span>${weekHours.toFixed(1)}h / ${user.maxHours}h</span></div>
+      <div class="user-stat"><span>${periodStatLabel}</span><span>${weekHours.toFixed(1)}h / ${user.maxHours}h</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
       <div class="user-stat"><span>Total</span><span>${totalHours.toFixed(1)}h (${totalSlots.length} créneaux)</span></div>`;
 
@@ -59,6 +74,12 @@ export function renderDashboard() {
   });
 
   container.innerHTML = html;
+}
+
+export function clearDashboardRange() {
+  state.dashboardRange = null;
+  saveDashboardRange();
+  renderDashboard();
 }
 
 function getAlerts(user, weekStart, weekEnd, weekSlots) {

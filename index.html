@@ -47,6 +47,9 @@
       <!-- Right panel -->
       <aside class="right-panel">
         <h2>Tableau de bord</h2>
+        <div class="dashboard-period-bar">
+          <button class="btn btn-secondary btn-sm" onclick="openDateRangeModal()">📊 Choisir une période</button>
+        </div>
         <div id="dashboard-content"></div>
       </aside>
     </div>
@@ -147,6 +150,26 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeAllModals()">Annuler</button>
         <button class="btn btn-primary" onclick="confirmAutoFill()">Remplir</button>
+      </div>
+    </div>
+
+    <!-- Date range picker modal -->
+    <div id="date-range-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3>📊 Choisir une période</h3>
+        <button class="modal-close" onclick="closeAllModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="date-range-instructions" id="date-range-instructions">
+          Cliquez sur une date pour choisir le début, puis une seconde date pour la fin.
+        </p>
+        <div id="date-range-calendars" class="date-range-calendars"></div>
+        <div class="date-range-summary" id="date-range-summary"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="resetDateRangeSelection()">Réinitialiser</button>
+        <button class="btn btn-secondary" onclick="closeAllModals()">Annuler</button>
+        <button class="btn btn-primary" id="date-range-apply-btn" onclick="applyDateRange()" disabled>Appliquer</button>
       </div>
     </div>
   </div>
