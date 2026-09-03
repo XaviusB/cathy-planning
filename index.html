@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Planning Partagé</title>
+  <title>Cathy Planning</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -11,10 +11,11 @@
     <!-- Header -->
     <header class="app-header">
       <div class="header-left">
-        <h1>📅 Planning Partagé</h1>
+        <h1>📅 Cathy Planning</h1>
         <div class="view-switcher">
           <button id="btn-week" class="view-btn active" onclick="setView('week')">Semaine</button>
           <button id="btn-month" class="view-btn" onclick="setView('month')">Mois</button>
+          <button id="btn-dashboard" class="view-btn" onclick="setView('dashboard')">Tableau de bord</button>
         </div>
         <div class="nav-controls">
           <button class="nav-btn" onclick="navigate(-1)">‹</button>
@@ -22,17 +23,65 @@
           <button class="nav-btn" onclick="navigate(1)">›</button>
           <button class="nav-btn today-btn" onclick="goToToday()">Aujourd'hui</button>
         </div>
+        <div class="display-controls">
+          <label>Mode
+            <select id="display-mode" onchange="setDisplayMode(this.value)">
+              <option value="overlap">Chevauchements</option>
+              <option value="user">Un utilisateur</option>
+            </select>
+          </label>
+          <label id="display-user-control">Utilisateur
+            <select id="display-user" onchange="setDisplayUser(this.value)"></select>
+          </label>
+        </div>
       </div>
       <div class="header-right">
         <button class="btn btn-primary" onclick="openSlotModal(null, null)">+ Créneau</button>
         <button class="btn btn-secondary" onclick="autoFillWeek()">🪄 Remplir auto</button>
         <button class="btn btn-secondary" onclick="openUsersModal()">👥 Utilisateurs</button>
-        <button class="btn btn-secondary" onclick="exportData()">💾 Exporter</button>
-        <button class="btn btn-secondary" onclick="exportWeekPdf()">🧾 Export PDF (semaine)</button>
-        <label class="btn btn-secondary" style="cursor:pointer">
-          📂 Importer
-          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)" />
-        </label>
+        <div class="dropdown-menu" id="main-menu">
+          <button class="btn btn-secondary" onclick="toggleMainMenu(event)">☰ Menu</button>
+          <div class="dropdown-panel hidden" id="main-menu-panel">
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-data')">
+                💾 Sauvegarde &amp; restauration <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-data">
+                <button class="dropdown-item" onclick="exportData();closeMainMenu()">📤 Sauvegarder (export JSON)</button>
+                <label class="dropdown-item" style="cursor:pointer">
+                  📥 Restaurer (import JSON)
+                  <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event);closeMainMenu()" />
+                </label>
+                <button class="dropdown-item danger" onclick="resetAllData();closeMainMenu()">🗑️ Tout réinitialiser</button>
+              </div>
+            </div>
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-settings')">
+                ⚙️ Paramètres <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-settings">
+                <button class="dropdown-item" onclick="openSettingsModal();closeMainMenu()">Horaires et repos</button>
+              </div>
+            </div>
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-pdf')">
+                🧾 Export PDF <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-pdf">
+                <button class="dropdown-item" onclick="exportWeekPdf();closeMainMenu()">Semaine en cours (tous les utilisateurs)</button>
+              </div>
+            </div>
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-theme')">
+                🎨 Thème <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-theme">
+                <button class="dropdown-item" id="theme-item-light" onclick="setTheme('light');closeMainMenu()">☀️ Clair</button>
+                <button class="dropdown-item" id="theme-item-dark" onclick="setTheme('dark');closeMainMenu()">🌙 Sombre</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -42,14 +91,11 @@
       <div class="calendar-area">
         <div id="week-view" class="calendar-view"></div>
         <div id="month-view" class="calendar-view hidden"></div>
+        <div id="dashboard-view" class="calendar-view hidden"></div>
       </div>
 
       <!-- Right panel -->
       <aside class="right-panel">
-        <h2>Tableau de bord</h2>
-        <div class="dashboard-period-bar">
-          <button class="btn btn-secondary btn-sm" onclick="openDateRangeModal()">📊 Choisir une période</button>
-        </div>
         <div id="dashboard-content"></div>
       </aside>
     </div>
@@ -57,6 +103,31 @@
 
   <!-- Modals -->
   <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+    <!-- Planning settings modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3>⚙️ Paramètres du planning</h3>
+        <button class="modal-close" onclick="closeAllModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Début des horaires standards <input type="time" id="settings-standard-start" /></label>
+        <label>Fin des horaires standards <input type="time" id="settings-standard-end" /></label>
+        <label>Nombre d'heures travaillées standard par semaine
+          <input type="number" id="settings-weekly-hours" min="1" max="168" step="0.5" />
+        </label>
+        <label>Durée standard du repos hebdomadaire (heures)
+          <input type="number" id="settings-rest-hours" min="35" max="168" step="0.5" />
+        </label>
+        <label>Jours de repos hebdomadaire
+          <div id="settings-rest-days" class="checkbox-group"></div>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAllModals()">Annuler</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Enregistrer</button>
+      </div>
+    </div>
+
     <!-- Slot modal -->
     <div id="slot-modal" class="modal hidden">
       <div class="modal-header">
@@ -156,7 +227,7 @@
     <!-- Date range picker modal -->
     <div id="date-range-modal" class="modal hidden">
       <div class="modal-header">
-        <h3>📊 Choisir une période</h3>
+        <h3>📅 Choisir une période</h3>
         <button class="modal-close" onclick="closeAllModals()">✕</button>
       </div>
       <div class="modal-body">

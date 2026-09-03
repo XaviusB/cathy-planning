@@ -4,6 +4,14 @@ import { showToast } from './utils/dom.js';
 import { renderAll } from './renderer.js';
 
 const DASHBOARD_RANGE_KEY = 'planning_dashboard_range_v1';
+const VIEW_PREFERENCES_KEY = 'planning_view_preferences_v1';
+export const DEFAULT_SETTINGS = {
+  standardStart: '09:00',
+  standardEnd: '17:00',
+  weeklyRestDays: [0],
+  weeklyRestHours: 35,
+  standardWeeklyHours: 35,
+};
 
 export const state = {
   users: [],
@@ -11,6 +19,9 @@ export const state = {
   view: 'week',
   currentDate: new Date(),
   dashboardRange: null,
+  settings: { ...DEFAULT_SETTINGS },
+  displayMode: 'overlap',
+  displayUserId: null,
 };
 
 export function loadData() {
@@ -20,6 +31,34 @@ export function loadData() {
       const d = JSON.parse(raw);
       if (d.users) state.users = d.users;
       if (d.slots) state.slots = d.slots;
+      if (d.settings) {
+        state.settings = {
+          ...DEFAULT_SETTINGS,
+          ...d.settings,
+          weeklyRestHours: Math.max(35, Number(d.settings.weeklyRestHours) || DEFAULT_SETTINGS.weeklyRestHours),
+          weeklyRestDays: Array.isArray(d.settings.weeklyRestDays)
+            ? d.settings.weeklyRestDays
+            : DEFAULT_SETTINGS.weeklyRestDays,
+        };
+      }
+
+      try {
+        const rawPreferences = localStorage.getItem(VIEW_PREFERENCES_KEY);
+        if (rawPreferences) {
+          const preferences = JSON.parse(rawPreferences);
+          if (['week', 'month', 'dashboard'].includes(preferences.view)) state.view = preferences.view;
+          if (preferences.displayMode === 'overlap' || preferences.displayMode === 'user') {
+            state.displayMode = preferences.displayMode;
+          }
+          if (typeof preferences.displayUserId === 'string') state.displayUserId = preferences.displayUserId;
+          if (preferences.currentDate) {
+            const date = new Date(preferences.currentDate);
+            if (!Number.isNaN(date.getTime())) state.currentDate = date;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load view preferences', e);
+      }
     }
   } catch (e) {
     console.warn('Failed to load data', e);
@@ -45,7 +84,37 @@ export function saveDashboardRange() {
 }
 
 export function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ users: state.users, slots: state.slots }));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ users: state.users, slots: state.slots, settings: state.settings }),
+  );
+}
+
+export function saveViewPreferences() {
+  localStorage.setItem(
+    VIEW_PREFERENCES_KEY,
+    JSON.stringify({
+      view: state.view,
+      displayMode: state.displayMode,
+      displayUserId: state.displayUserId,
+      currentDate: state.currentDate.toISOString(),
+    }),
+  );
+}
+
+export function isSlotVisible(slot) {
+  return state.displayMode !== 'user' || (slot.userIds || []).includes(state.displayUserId);
+}
+
+export function resetData() {
+  state.users = [];
+  state.slots = [];
+  state.dashboardRange = null;
+  state.settings = { ...DEFAULT_SETTINGS, weeklyRestDays: [...DEFAULT_SETTINGS.weeklyRestDays] };
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(DASHBOARD_RANGE_KEY);
+  renderAll();
+  showToast('Toutes les données ont été réinitialisées');
 }
 
 export function exportData() {
