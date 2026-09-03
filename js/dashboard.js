@@ -21,11 +21,18 @@ export function renderDashboard() {
       ? `Le ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} ${ws.getFullYear()}`
       : `Du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} au ${we.getDate()} ${MONTH_NAMES[we.getMonth()]} ${we.getFullYear()}`;
   } else {
-    ws = getWeekStart(state.currentDate);
-    we = addDays(ws, 6);
+    if (state.view === 'month') {
+      ws = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
+      we = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0);
+    } else {
+      ws = getWeekStart(state.currentDate);
+      we = addDays(ws, 6);
+    }
     wsStr = formatDate(ws);
     weStr = formatDate(we);
-    periodLabel = `Semaine du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]}`;
+    periodLabel = state.view === 'month'
+      ? `${MONTH_NAMES[ws.getMonth()]} ${ws.getFullYear()}`
+      : `Semaine du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]}`;
   }
 
   let html = `<div class="dashboard-period-label">
@@ -46,9 +53,7 @@ export function renderDashboard() {
     const barColor =
       weekHours > user.maxHours
         ? 'var(--danger)'
-        : weekHours > user.maxHours * 0.85
-          ? 'var(--warning)'
-          : 'var(--success)';
+        : 'var(--success)';
 
     const periodStatLabel = state.dashboardRange ? 'Période' : 'Semaine';
 
@@ -79,6 +84,29 @@ export function clearDashboardRange() {
   state.dashboardRange = null;
   saveDashboardRange();
   renderDashboard();
+}
+
+function getWeeklyRestAlerts(periodStart, periodEnd) {
+  const alerts = [];
+  let weekStart = getWeekStart(periodStart);
+  let hasInsufficientRest = false;
+
+  while (weekStart <= periodEnd) {
+    const weekEnd = addDays(weekStart, 6);
+    if (calculateWeeklyRestHours(weekStart, weekEnd) < state.settings.weeklyRestHours) {
+      hasInsufficientRest = true;
+      alerts.push({
+        type: 'warning',
+        msg: `⚠️ Repos hebdomadaire insuffisant (${weekStart.getDate()} ${MONTH_NAMES[weekStart.getMonth()]})`,
+      });
+    }
+    weekStart = addDays(weekStart, 7);
+  }
+
+  if (!hasInsufficientRest) {
+    alerts.push({ type: 'success', msg: '✅ Repos hebdomadaire conforme' });
+  }
+  return alerts;
 }
 
 function calculateWeeklyRestHours(periodStart, periodEnd) {
@@ -116,18 +144,11 @@ function calculateWeeklyRestHours(periodStart, periodEnd) {
 function getAlerts(user, weekStart, weekEnd, weekSlots) {
   const alerts = [];
   const weekHours = weekSlots.reduce((acc, s) => acc + slotDurationMin(s), 0) / 60;
-  const weeklyRestHours = calculateWeeklyRestHours(weekStart, weekEnd);
-
-  alerts.push(
-    weeklyRestHours < state.settings.weeklyRestHours
-      ? { type: 'warning', msg: '⚠️ Repos hebdomadaire insuffisant' }
-      : { type: 'success', msg: '✅ Repos hebdomadaire conforme' },
-  );
+  const weeklyRestAlerts = getWeeklyRestAlerts(weekStart, weekEnd);
+  alerts.push(...weeklyRestAlerts);
 
   if (weekHours > user.maxHours) {
     alerts.push({ type: 'danger', msg: `⚠️ Dépassement : ${weekHours.toFixed(1)}h/${user.maxHours}h` });
-  } else if (weekHours > user.maxHours * 0.9) {
-    alerts.push({ type: 'warning', msg: `⚡ Proche limite : ${weekHours.toFixed(1)}h/${user.maxHours}h` });
   }
 
   for (let i = 0; i < 7; i++) {
