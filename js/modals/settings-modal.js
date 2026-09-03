@@ -17,6 +17,7 @@ export function openSettingsModal() {
   document.getElementById('settings-standard-start').value = state.settings.standardStart;
   document.getElementById('settings-standard-end').value = state.settings.standardEnd;
   document.getElementById('settings-weekly-hours').value = state.settings.standardWeeklyHours;
+  document.getElementById('settings-rest-hours').value = state.settings.weeklyRestHours;
   const restDays = new Set(state.settings.weeklyRestDays);
   document.querySelectorAll('#settings-rest-days input').forEach((input) => {
     input.checked = restDays.has(Number(input.value));
@@ -28,6 +29,7 @@ export function saveSettings() {
   const standardStart = document.getElementById('settings-standard-start').value;
   const standardEnd = document.getElementById('settings-standard-end').value;
   const standardWeeklyHours = Number(document.getElementById('settings-weekly-hours').value);
+  const weeklyRestHours = Number(document.getElementById('settings-rest-hours').value);
   const weeklyRestDays = Array.from(
     document.querySelectorAll('#settings-rest-days input:checked'),
   ).map((input) => Number(input.value));
@@ -40,8 +42,18 @@ export function saveSettings() {
     showToast("Le nombre d'heures hebdomadaires doit être compris entre 1 et 168", 'error');
     return;
   }
+  if (!Number.isFinite(weeklyRestHours) || weeklyRestHours <= 0 || weeklyRestHours > 168) {
+    showToast('La durée du repos hebdomadaire doit être comprise entre 1 et 168 heures', 'error');
+    return;
+  }
 
-  state.settings = { standardStart, standardEnd, weeklyRestDays, standardWeeklyHours };
+  state.settings = {
+    standardStart,
+    standardEnd,
+    weeklyRestDays,
+    standardWeeklyHours,
+    weeklyRestHours,
+  };
   saveData();
   closeAllModals();
   renderAll();

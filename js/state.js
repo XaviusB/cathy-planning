@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS = {
   standardStart: '09:00',
   standardEnd: '17:00',
   weeklyRestDays: [0],
+  weeklyRestHours: 35,
   standardWeeklyHours: 35,
 };
 
