@@ -46,7 +46,7 @@ export function loadData() {
         const rawPreferences = localStorage.getItem(VIEW_PREFERENCES_KEY);
         if (rawPreferences) {
           const preferences = JSON.parse(rawPreferences);
-          if (preferences.view === 'week' || preferences.view === 'month') state.view = preferences.view;
+          if (['week', 'month', 'dashboard'].includes(preferences.view)) state.view = preferences.view;
           if (preferences.displayMode === 'overlap' || preferences.displayMode === 'user') {
             state.displayMode = preferences.displayMode;
           }

@@ -15,6 +15,7 @@
         <div class="view-switcher">
           <button id="btn-week" class="view-btn active" onclick="setView('week')">Semaine</button>
           <button id="btn-month" class="view-btn" onclick="setView('month')">Mois</button>
+          <button id="btn-dashboard" class="view-btn" onclick="setView('dashboard')">Tableau de bord</button>
         </div>
         <div class="nav-controls">
           <button class="nav-btn" onclick="navigate(-1)">‹</button>
@@ -90,14 +91,11 @@
       <div class="calendar-area">
         <div id="week-view" class="calendar-view"></div>
         <div id="month-view" class="calendar-view hidden"></div>
+        <div id="dashboard-view" class="calendar-view hidden"></div>
       </div>
 
       <!-- Right panel -->
       <aside class="right-panel">
-        <h2>Tableau de bord</h2>
-        <div class="dashboard-period-bar">
-          <button class="btn btn-secondary btn-sm" onclick="openDateRangeModal()">📊 Choisir une période</button>
-        </div>
         <div id="dashboard-content"></div>
       </aside>
     </div>

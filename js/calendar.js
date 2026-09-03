@@ -7,19 +7,24 @@ import { renderDashboard } from './dashboard.js';
 import { escapeHtml } from './utils/dom.js';
 
 export function setView(v) {
-  state.view = v;
+  state.view = ['week', 'month', 'dashboard'].includes(v) ? v : 'week';
   saveViewPreferences();
-  document.getElementById('btn-week').classList.toggle('active', v === 'week');
-  document.getElementById('btn-month').classList.toggle('active', v === 'month');
-  document.getElementById('week-view').classList.toggle('hidden', v !== 'week');
-  document.getElementById('month-view').classList.toggle('hidden', v !== 'month');
+  document.getElementById('btn-week').classList.toggle('active', state.view === 'week');
+  document.getElementById('btn-month').classList.toggle('active', state.view === 'month');
+  document.getElementById('btn-dashboard').classList.toggle('active', state.view === 'dashboard');
+  document.getElementById('week-view').classList.toggle('hidden', state.view !== 'week');
+  document.getElementById('month-view').classList.toggle('hidden', state.view !== 'month');
+  document.getElementById('dashboard-view').classList.toggle('hidden', state.view !== 'dashboard');
+  document.querySelector('.right-panel').classList.toggle('hidden', state.view === 'dashboard');
+  document.querySelector('.nav-controls').classList.toggle('hidden', state.view === 'dashboard');
+  document.querySelector('.display-controls').classList.toggle('hidden', state.view === 'dashboard');
   renderCalendar();
 }
 
 export function navigate(dir) {
   if (state.view === 'week') {
     state.currentDate = addDays(state.currentDate, dir * 7);
-  } else {
+  } else if (state.view === 'month') {
     state.currentDate = new Date(
       state.currentDate.getFullYear(),
       state.currentDate.getMonth() + dir,
@@ -65,8 +70,10 @@ function updatePeriodLabel() {
     } else {
       el.textContent = `${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} – ${we.getDate()} ${MONTH_NAMES[we.getMonth()]} ${ws.getFullYear()}`;
     }
-  } else {
+  } else if (state.view === 'month') {
     el.textContent = `${MONTH_NAMES[state.currentDate.getMonth()]} ${state.currentDate.getFullYear()}`;
+  } else {
+    el.textContent = 'Tableau de bord';
   }
 }
 
@@ -74,12 +81,17 @@ export function renderCalendar() {
   renderDisplayControls();
   document.getElementById('btn-week').classList.toggle('active', state.view === 'week');
   document.getElementById('btn-month').classList.toggle('active', state.view === 'month');
+  document.getElementById('btn-dashboard').classList.toggle('active', state.view === 'dashboard');
   document.getElementById('week-view').classList.toggle('hidden', state.view !== 'week');
   document.getElementById('month-view').classList.toggle('hidden', state.view !== 'month');
+  document.getElementById('dashboard-view').classList.toggle('hidden', state.view !== 'dashboard');
+  document.querySelector('.right-panel').classList.toggle('hidden', state.view === 'dashboard');
+  document.querySelector('.nav-controls').classList.toggle('hidden', state.view === 'dashboard');
+  document.querySelector('.display-controls').classList.toggle('hidden', state.view === 'dashboard');
   updatePeriodLabel();
   if (state.view === 'week') {
     renderWeekView();
-  } else {
+  } else if (state.view === 'month') {
     renderMonthView();
   }
   renderDashboard();
