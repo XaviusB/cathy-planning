@@ -42,8 +42,8 @@ export function saveSettings() {
     showToast("Le nombre d'heures hebdomadaires doit être compris entre 1 et 168", 'error');
     return;
   }
-  if (!Number.isFinite(weeklyRestHours) || weeklyRestHours <= 0 || weeklyRestHours > 168) {
-    showToast('La durée du repos hebdomadaire doit être comprise entre 1 et 168 heures', 'error');
+  if (!Number.isFinite(weeklyRestHours) || weeklyRestHours < 35 || weeklyRestHours > 168) {
+    showToast('La durée du repos hebdomadaire doit être comprise entre 35 et 168 heures', 'error');
     return;
   }
 

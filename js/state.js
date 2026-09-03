@@ -35,6 +35,7 @@ export function loadData() {
         state.settings = {
           ...DEFAULT_SETTINGS,
           ...d.settings,
+          weeklyRestHours: Math.max(35, Number(d.settings.weeklyRestHours) || DEFAULT_SETTINGS.weeklyRestHours),
           weeklyRestDays: Array.isArray(d.settings.weeklyRestDays)
             ? d.settings.weeklyRestDays
             : DEFAULT_SETTINGS.weeklyRestDays,

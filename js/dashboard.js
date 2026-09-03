@@ -41,14 +41,6 @@ export function renderDashboard() {
 
     const weekHours = weekSlots.reduce((acc, s) => acc + slotDurationMin(s), 0) / 60;
     const totalHours = totalSlots.reduce((acc, s) => acc + slotDurationMin(s), 0) / 60;
-    const weeklyRestHours = calculateWeeklyRestHours(ws, we);
-    const weeklyRestColor =
-      weeklyRestHours >= state.settings.weeklyRestHours ? 'var(--success)' : 'var(--warning)';
-    const weeklyRestPct = Math.min(
-      (weeklyRestHours / state.settings.weeklyRestHours) * 100,
-      100,
-    );
-
     const alerts = getAlerts(user, ws, we, weekSlots);
     const pct = Math.min((weekHours / user.maxHours) * 100, 100);
     const barColor =
@@ -68,13 +60,6 @@ export function renderDashboard() {
       </div>
       <div class="user-stat"><span>${periodStatLabel}</span><span>${weekHours.toFixed(1)}h / ${user.maxHours}h</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
-      <div class="user-stat">
-        <span>Repos hebdomadaire</span>
-        <span style="color:${weeklyRestColor}">${weeklyRestHours.toFixed(1)}h / ${state.settings.weeklyRestHours}h</span>
-      </div>
-      <div class="progress-bar rest-progress">
-        <div class="progress-fill" style="width:${weeklyRestPct}%;background:${weeklyRestColor}"></div>
-      </div>
       <div class="user-stat"><span>Total</span><span>${totalHours.toFixed(1)}h (${totalSlots.length} créneaux)</span></div>`;
 
     if (alerts.length > 0) {
@@ -118,13 +103,26 @@ function calculateWeeklyRestHours(periodStart, periodEnd) {
     longestGap = Math.max(longestGap, interval.start - cursor);
     cursor = Math.max(cursor, interval.end);
   });
-  longestGap = Math.max(longestGap, periodEndMin - cursor);
+  if (intervals.length > 0) {
+    const firstStart = intervals[0].start;
+    const lastEnd = intervals[intervals.length - 1].end;
+    longestGap = Math.max(longestGap, firstStart + periodEndMin - lastEnd);
+  } else {
+    longestGap = periodEndMin;
+  }
   return longestGap / 60;
 }
 
 function getAlerts(user, weekStart, weekEnd, weekSlots) {
   const alerts = [];
   const weekHours = weekSlots.reduce((acc, s) => acc + slotDurationMin(s), 0) / 60;
+  const weeklyRestHours = calculateWeeklyRestHours(weekStart, weekEnd);
+
+  alerts.push(
+    weeklyRestHours < state.settings.weeklyRestHours
+      ? { type: 'warning', msg: '⚠️ Repos hebdomadaire insuffisant' }
+      : { type: 'success', msg: '✅ Repos hebdomadaire conforme' },
+  );
 
   if (weekHours > user.maxHours) {
     alerts.push({ type: 'danger', msg: `⚠️ Dépassement : ${weekHours.toFixed(1)}h/${user.maxHours}h` });
