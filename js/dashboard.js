@@ -41,6 +41,13 @@ export function renderDashboard() {
 
     const weekHours = weekSlots.reduce((acc, s) => acc + slotDurationMin(s), 0) / 60;
     const totalHours = totalSlots.reduce((acc, s) => acc + slotDurationMin(s), 0) / 60;
+    const weeklyRestHours = calculateWeeklyRestHours(ws, we);
+    const weeklyRestColor =
+      weeklyRestHours >= state.settings.weeklyRestHours ? 'var(--success)' : 'var(--warning)';
+    const weeklyRestPct = Math.min(
+      (weeklyRestHours / state.settings.weeklyRestHours) * 100,
+      100,
+    );
 
     const alerts = getAlerts(user, ws, we, weekSlots);
     const pct = Math.min((weekHours / user.maxHours) * 100, 100);
@@ -61,6 +68,13 @@ export function renderDashboard() {
       </div>
       <div class="user-stat"><span>${periodStatLabel}</span><span>${weekHours.toFixed(1)}h / ${user.maxHours}h</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+      <div class="user-stat">
+        <span>Repos hebdomadaire</span>
+        <span style="color:${weeklyRestColor}">${weeklyRestHours.toFixed(1)}h / ${state.settings.weeklyRestHours}h</span>
+      </div>
+      <div class="progress-bar rest-progress">
+        <div class="progress-fill" style="width:${weeklyRestPct}%;background:${weeklyRestColor}"></div>
+      </div>
       <div class="user-stat"><span>Total</span><span>${totalHours.toFixed(1)}h (${totalSlots.length} créneaux)</span></div>`;
 
     if (alerts.length > 0) {
@@ -80,6 +94,32 @@ export function clearDashboardRange() {
   state.dashboardRange = null;
   saveDashboardRange();
   renderDashboard();
+}
+
+function calculateWeeklyRestHours(periodStart, periodEnd) {
+  const periodStartMin = 0;
+  const periodEndMin = ((periodEnd - periodStart) / (1000 * 60 * 60 * 24) + 1) * 24 * 60;
+  const standardStart = timeToMin(state.settings.standardStart);
+  const standardEnd = timeToMin(state.settings.standardEnd);
+  const intervals = Array.from({ length: Math.round(periodEndMin / (24 * 60)) }, (_, dayOffset) => {
+    const date = addDays(periodStart, dayOffset);
+    if (state.settings.weeklyRestDays.includes(date.getDay())) return null;
+    return {
+      start: dayOffset * 24 * 60 + standardStart,
+      end: dayOffset * 24 * 60 + standardEnd,
+    };
+  })
+    .filter(Boolean)
+    .sort((a, b) => a.start - b.start);
+
+  let longestGap = 0;
+  let cursor = periodStartMin;
+  intervals.forEach((interval) => {
+    longestGap = Math.max(longestGap, interval.start - cursor);
+    cursor = Math.max(cursor, interval.end);
+  });
+  longestGap = Math.max(longestGap, periodEndMin - cursor);
+  return longestGap / 60;
 }
 
 function getAlerts(user, weekStart, weekEnd, weekSlots) {
