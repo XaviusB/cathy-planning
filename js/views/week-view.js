@@ -50,9 +50,16 @@ function _buildBodyHtml(days) {
   html += `<div class="week-days-grid" id="week-days-grid" style="grid-template-columns:repeat(7,1fr)">`;
   days.forEach((day) => {
     const dateStr = formatDate(day);
-    html += `<div class="week-day-col" data-date="${dateStr}">`;
+    const isRestDay = state.settings.weeklyRestDays.includes(day.getDay());
+    html += `<div class="week-day-col${isRestDay ? ' standard-rest-day' : ''}" data-date="${dateStr}">`;
     for (let h = HOUR_START; h < HOUR_END; h++) {
-      html += `<div class="week-hour-cell" data-date="${dateStr}" data-hour="${h}"></div>`;
+      const standardStart = timeToMin(state.settings.standardStart);
+      const standardEnd = timeToMin(state.settings.standardEnd);
+      const standardClass =
+        !isRestDay && (h + 1) * 60 > standardStart && h * 60 < standardEnd
+          ? ' standard-hours'
+          : '';
+      html += `<div class="week-hour-cell${standardClass}" data-date="${dateStr}" data-hour="${h}"></div>`;
     }
     html += '</div>';
   });

@@ -22,6 +22,7 @@ import { startUserDrag } from './drag/user-drag.js';
 import { handleMonthCellClick } from './views/month-view.js';
 import { exportWeekPdf } from './export-pdf.js';
 import { initTheme, setTheme, toggleMainMenu, closeMainMenu, toggleSubmenu } from './menu.js';
+import { openSettingsModal, saveSettings, renderSettingsDays } from './modals/settings-modal.js';
 
 // Wire the renderer so all modules can call renderAll() without circular deps
 setRenderAll(renderCalendar);
@@ -58,6 +59,8 @@ window.setTheme = setTheme;
 window.toggleMainMenu = toggleMainMenu;
 window.closeMainMenu = closeMainMenu;
 window.toggleSubmenu = toggleSubmenu;
+window.openSettingsModal = openSettingsModal;
+window.saveSettings = saveSettings;
 
 async function resetAllData() {
   const confirmed = await showConfirm(
@@ -82,6 +85,7 @@ function closeModal(e) {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 function init() {
   initTheme();
+  renderSettingsDays();
   loadData();
   renderCalendar();
 
@@ -92,6 +96,16 @@ function init() {
 
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
+    if (
+      e.key === 'Enter' &&
+      e.ctrlKey &&
+      !document.getElementById('slot-modal').classList.contains('hidden')
+    ) {
+      e.preventDefault();
+      saveSlot();
+      return;
+    }
+
     if (e.key === 'Escape') {
       if (resizeState) {
         if (cancelResize) cancelResize();

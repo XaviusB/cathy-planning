@@ -44,6 +44,14 @@
               </div>
             </div>
             <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-settings')">
+                ⚙️ Paramètres <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-settings">
+                <button class="dropdown-item" onclick="openSettingsModal();closeMainMenu()">Horaires et repos</button>
+              </div>
+            </div>
+            <div class="dropdown-submenu">
               <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-pdf')">
                 🧾 Export PDF <span class="dropdown-caret">›</span>
               </button>
@@ -86,6 +94,28 @@
 
   <!-- Modals -->
   <div id="modal-overlay" class="modal-overlay hidden" onclick="closeModal(event)">
+    <!-- Planning settings modal -->
+    <div id="settings-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3>⚙️ Paramètres du planning</h3>
+        <button class="modal-close" onclick="closeAllModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Début des horaires standards <input type="time" id="settings-standard-start" /></label>
+        <label>Fin des horaires standards <input type="time" id="settings-standard-end" /></label>
+        <label>Nombre d'heures travaillées standard par semaine
+          <input type="number" id="settings-weekly-hours" min="1" max="168" step="0.5" />
+        </label>
+        <label>Jours de repos hebdomadaire
+          <div id="settings-rest-days" class="checkbox-group"></div>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeAllModals()">Annuler</button>
+        <button class="btn btn-primary" onclick="saveSettings()">Enregistrer</button>
+      </div>
+    </div>
+
     <!-- Slot modal -->
     <div id="slot-modal" class="modal hidden">
       <div class="modal-header">

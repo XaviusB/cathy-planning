@@ -32,13 +32,20 @@ export function renderMonthView() {
     const cellDate = new Date(year, month, d);
     const dateStr = formatDate(cellDate);
     const isToday = sameDay(cellDate, today);
+    const isRestDay = state.settings.weeklyRestDays.includes(cellDate.getDay());
+    const standardStart = (timeToMin(state.settings.standardStart) / ((HOUR_END - HOUR_START) * 60)) * 100;
+    const standardWidth =
+      ((timeToMin(state.settings.standardEnd) - timeToMin(state.settings.standardStart)) /
+        ((HOUR_END - HOUR_START) * 60)) *
+      100;
 
     html += `<div class="agenda-row${isToday ? ' today' : ''}">`;
     html += `<div class="agenda-day-label" onclick="handleMonthCellClick(event,'${dateStr}')">
       <span class="agenda-day-name">${DAY_NAMES_SHORT[cellDate.getDay()]}</span>
       <span class="agenda-day-num">${d}</span>
     </div>`;
-    html += `<div class="agenda-track" data-date="${dateStr}">`;
+    html += `<div class="agenda-track${isRestDay ? ' standard-rest-day' : ' standard-day'}" data-date="${dateStr}"
+      style="--standard-start:${standardStart}%;--standard-width:${standardWidth}%;">`;
 
     for (let h = HOUR_START; h < HOUR_END; h++) {
       const left = ((h - HOUR_START) / (HOUR_END - HOUR_START)) * 100;

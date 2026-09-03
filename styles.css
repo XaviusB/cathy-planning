@@ -405,6 +405,8 @@ h1 {
   transition: background 0.1s;
 }
 .week-hour-cell:hover { background: rgba(79,134,247,0.05); }
+.week-hour-cell.standard-hours { background: rgba(39,174,96,0.12); }
+.week-day-col.standard-rest-day { background: rgba(108,117,125,0.08); }
 .week-hour-cell.half { border-bottom: 1px dashed var(--border-light); height: calc(var(--hour-height)/2); }
 
 /* Slots on week view */
@@ -566,6 +568,16 @@ h1 {
   cursor: pointer;
   transition: background 0.1s;
 }
+.agenda-track.standard-day {
+  background: linear-gradient(
+    to right,
+    transparent var(--standard-start),
+    rgba(39,174,96,0.12) var(--standard-start),
+    rgba(39,174,96,0.12) calc(var(--standard-start) + var(--standard-width)),
+    transparent calc(var(--standard-start) + var(--standard-width))
+  );
+}
+.agenda-track.standard-rest-day { background: rgba(108,117,125,0.08); }
 .agenda-track:hover { background: rgba(79,134,247,0.03); }
 
 .agenda-hour-gridline {

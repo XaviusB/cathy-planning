@@ -4,6 +4,12 @@ import { showToast } from './utils/dom.js';
 import { renderAll } from './renderer.js';
 
 const DASHBOARD_RANGE_KEY = 'planning_dashboard_range_v1';
+export const DEFAULT_SETTINGS = {
+  standardStart: '09:00',
+  standardEnd: '17:00',
+  weeklyRestDays: [0],
+  standardWeeklyHours: 35,
+};
 
 export const state = {
   users: [],
@@ -11,6 +17,7 @@ export const state = {
   view: 'week',
   currentDate: new Date(),
   dashboardRange: null,
+  settings: { ...DEFAULT_SETTINGS },
 };
 
 export function loadData() {
@@ -20,6 +27,15 @@ export function loadData() {
       const d = JSON.parse(raw);
       if (d.users) state.users = d.users;
       if (d.slots) state.slots = d.slots;
+      if (d.settings) {
+        state.settings = {
+          ...DEFAULT_SETTINGS,
+          ...d.settings,
+          weeklyRestDays: Array.isArray(d.settings.weeklyRestDays)
+            ? d.settings.weeklyRestDays
+            : DEFAULT_SETTINGS.weeklyRestDays,
+        };
+      }
     }
   } catch (e) {
     console.warn('Failed to load data', e);
@@ -45,13 +61,17 @@ export function saveDashboardRange() {
 }
 
 export function saveData() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ users: state.users, slots: state.slots }));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ users: state.users, slots: state.slots, settings: state.settings }),
+  );
 }
 
 export function resetData() {
   state.users = [];
   state.slots = [];
   state.dashboardRange = null;
+  state.settings = { ...DEFAULT_SETTINGS, weeklyRestDays: [...DEFAULT_SETTINGS.weeklyRestDays] };
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(DASHBOARD_RANGE_KEY);
   renderAll();
