@@ -1,12 +1,14 @@
-import { state } from './state.js';
+import { state, saveViewPreferences } from './state.js';
 import { MONTH_NAMES } from './constants.js';
 import { getWeekStart, addDays } from './utils/date.js';
 import { renderWeekView } from './views/week-view.js';
 import { renderMonthView } from './views/month-view.js';
 import { renderDashboard } from './dashboard.js';
+import { escapeHtml } from './utils/dom.js';
 
 export function setView(v) {
   state.view = v;
+  saveViewPreferences();
   document.getElementById('btn-week').classList.toggle('active', v === 'week');
   document.getElementById('btn-month').classList.toggle('active', v === 'month');
   document.getElementById('week-view').classList.toggle('hidden', v !== 'week');
@@ -24,11 +26,28 @@ export function navigate(dir) {
       1,
     );
   }
+  saveViewPreferences();
   renderCalendar();
 }
 
 export function goToToday() {
   state.currentDate = new Date();
+  saveViewPreferences();
+  renderCalendar();
+}
+
+export function setDisplayMode(mode) {
+  state.displayMode = mode === 'user' ? 'user' : 'overlap';
+  if (state.displayMode === 'user' && !state.displayUserId && state.users.length) {
+    state.displayUserId = state.users[0].id;
+  }
+  saveViewPreferences();
+  renderCalendar();
+}
+
+export function setDisplayUser(userId) {
+  state.displayUserId = userId || null;
+  saveViewPreferences();
   renderCalendar();
 }
 
@@ -48,6 +67,11 @@ function updatePeriodLabel() {
 }
 
 export function renderCalendar() {
+  renderDisplayControls();
+  document.getElementById('btn-week').classList.toggle('active', state.view === 'week');
+  document.getElementById('btn-month').classList.toggle('active', state.view === 'month');
+  document.getElementById('week-view').classList.toggle('hidden', state.view !== 'week');
+  document.getElementById('month-view').classList.toggle('hidden', state.view !== 'month');
   updatePeriodLabel();
   if (state.view === 'week') {
     renderWeekView();
@@ -55,4 +79,21 @@ export function renderCalendar() {
     renderMonthView();
   }
   renderDashboard();
+}
+
+function renderDisplayControls() {
+  const mode = document.getElementById('display-mode');
+  const userSelect = document.getElementById('display-user');
+  const userControl = document.getElementById('display-user-control');
+  if (!mode || !userSelect || !userControl) return;
+
+  userSelect.innerHTML = state.users
+    .map((user) => `<option value="${user.id}">${escapeHtml(user.name)}</option>`)
+    .join('');
+  if (state.displayMode === 'user' && !state.users.some((user) => user.id === state.displayUserId)) {
+    state.displayUserId = state.users[0]?.id || null;
+  }
+  mode.value = state.displayMode;
+  userSelect.value = state.displayUserId || '';
+  userControl.classList.toggle('hidden', state.displayMode !== 'user');
 }

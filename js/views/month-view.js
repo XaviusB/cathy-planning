@@ -1,4 +1,4 @@
-import { state } from '../state.js';
+import { state, isSlotVisible } from '../state.js';
 import { HOUR_START, HOUR_END, DAY_NAMES_SHORT } from '../constants.js';
 import { formatDate, sameDay, timeToMin } from '../utils/date.js';
 import { escapeHtml, getContrastColor, effectiveSlotColor, slotBackground } from '../utils/dom.js';
@@ -6,6 +6,7 @@ import { openSlotModal } from '../modals/slot-modal.js';
 import { startDrag } from '../drag/slot-drag.js';
 import { startResize } from '../drag/slot-resize.js';
 import { startGridDraw } from '../drag/grid-draw.js';
+import { layoutOverlappingSlots } from '../utils/slot-layout.js';
 
 // "Agenda" month view: one horizontal row per day of the month, each row showing
 // a 0h–24h timeline with slots positioned/sized proportionally to their time —
@@ -75,7 +76,12 @@ function _renderSlots(year, month, numDays) {
     const track = tracks[d - 1];
     if (!track) continue;
 
-    const daySlots = state.slots.filter((s) => s.date === dateStr);
+    const daySlots = state.slots.filter((s) => s.date === dateStr && isSlotVisible(s));
+    const layouts = layoutOverlappingSlots(daySlots);
+    if (state.displayMode === 'overlap') {
+      const laneCount = layouts.values().next().value?.laneCount || 1;
+      track.style.minHeight = `${Math.max(42, laneCount * 42)}px`;
+    }
     const totalMin = (HOUR_END - HOUR_START) * 60;
 
     daySlots.forEach((slot) => {
@@ -94,6 +100,12 @@ function _renderSlots(year, month, numDays) {
       el.style.width = `${width}%`;
       el.style.background = bg;
       el.style.color = textColor;
+      if (state.displayMode === 'overlap') {
+        const layout = layouts.get(slot.id);
+        el.style.top = `${(layout.lane / layout.laneCount) * 100}%`;
+        el.style.bottom = 'auto';
+        el.style.height = `${100 / layout.laneCount}%`;
+      }
       el.title = `${slot.title || 'Créneau'} (${slot.start}–${slot.end})`;
       el.innerHTML = `
         <div class="slot-resize-handle slot-resize-left"></div>

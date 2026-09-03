@@ -4,6 +4,7 @@ import { showToast } from './utils/dom.js';
 import { renderAll } from './renderer.js';
 
 const DASHBOARD_RANGE_KEY = 'planning_dashboard_range_v1';
+const VIEW_PREFERENCES_KEY = 'planning_view_preferences_v1';
 export const DEFAULT_SETTINGS = {
   standardStart: '09:00',
   standardEnd: '17:00',
@@ -19,6 +20,8 @@ export const state = {
   currentDate: new Date(),
   dashboardRange: null,
   settings: { ...DEFAULT_SETTINGS },
+  displayMode: 'overlap',
+  displayUserId: null,
 };
 
 export function loadData() {
@@ -36,6 +39,24 @@ export function loadData() {
             ? d.settings.weeklyRestDays
             : DEFAULT_SETTINGS.weeklyRestDays,
         };
+      }
+
+      try {
+        const rawPreferences = localStorage.getItem(VIEW_PREFERENCES_KEY);
+        if (rawPreferences) {
+          const preferences = JSON.parse(rawPreferences);
+          if (preferences.view === 'week' || preferences.view === 'month') state.view = preferences.view;
+          if (preferences.displayMode === 'overlap' || preferences.displayMode === 'user') {
+            state.displayMode = preferences.displayMode;
+          }
+          if (typeof preferences.displayUserId === 'string') state.displayUserId = preferences.displayUserId;
+          if (preferences.currentDate) {
+            const date = new Date(preferences.currentDate);
+            if (!Number.isNaN(date.getTime())) state.currentDate = date;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load view preferences', e);
       }
     }
   } catch (e) {
@@ -66,6 +87,22 @@ export function saveData() {
     STORAGE_KEY,
     JSON.stringify({ users: state.users, slots: state.slots, settings: state.settings }),
   );
+}
+
+export function saveViewPreferences() {
+  localStorage.setItem(
+    VIEW_PREFERENCES_KEY,
+    JSON.stringify({
+      view: state.view,
+      displayMode: state.displayMode,
+      displayUserId: state.displayUserId,
+      currentDate: state.currentDate.toISOString(),
+    }),
+  );
+}
+
+export function isSlotVisible(slot) {
+  return state.displayMode !== 'user' || (slot.userIds || []).includes(state.displayUserId);
 }
 
 export function resetData() {

@@ -1,4 +1,4 @@
-import { state } from '../state.js';
+import { state, isSlotVisible } from '../state.js';
 import { HOUR_START, HOUR_END, DAY_NAMES_SHORT } from '../constants.js';
 import { getWeekStart, addDays, formatDate, sameDay, timeToMin } from '../utils/date.js';
 import { escapeHtml, getContrastColor, effectiveSlotColor, slotBackground } from '../utils/dom.js';
@@ -6,6 +6,7 @@ import { openSlotModal } from '../modals/slot-modal.js';
 import { startDrag } from '../drag/slot-drag.js';
 import { startResize } from '../drag/slot-resize.js';
 import { startGridDraw } from '../drag/grid-draw.js';
+import { layoutOverlappingSlots } from '../utils/slot-layout.js';
 
 export function renderWeekView() {
   const ws = getWeekStart(state.currentDate);
@@ -75,8 +76,16 @@ function _renderSlots(days) {
   const wsStr = formatDate(days[0]);
   const weStr = formatDate(days[6]);
 
-  state.slots
-    .filter((s) => s.date >= wsStr && s.date <= weStr)
+  const slots = state.slots
+    .filter((s) => s.date >= wsStr && s.date <= weStr && isSlotVisible(s));
+  const layoutsByDate = new Map();
+  slots.forEach((slot) => {
+    if (!layoutsByDate.has(slot.date)) layoutsByDate.set(slot.date, layoutOverlappingSlots(
+      slots.filter((candidate) => candidate.date === slot.date),
+    ));
+  });
+
+  slots
     .forEach((slot) => {
       const dayIdx = days.findIndex((d) => formatDate(d) === slot.date);
       if (dayIdx < 0) return;
@@ -94,6 +103,12 @@ function _renderSlots(days) {
       el.dataset.slotId = slot.id;
       el.style.top = `${top}%`;
       el.style.height = `${Math.max(height, 1.2)}%`;
+      if (state.displayMode === 'overlap') {
+        const layout = layoutsByDate.get(slot.date).get(slot.id);
+        el.style.left = `${(layout.lane / layout.laneCount) * 100}%`;
+        el.style.width = `${100 / layout.laneCount}%`;
+        el.style.right = 'auto';
+      }
 
       const assignedUsers = (slot.userIds || [])
         .map((id) => state.users.find((u) => u.id === id))
