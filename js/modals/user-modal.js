@@ -27,6 +27,11 @@ export function openUsersModal() {
   showModal('users-modal');
 }
 
+export function openUserTrashModal() {
+  renderTrashList();
+  showModal('user-trash-modal');
+}
+
 export function renderUsersList() {
   const container = document.getElementById('users-list');
   const activeUsers = getActiveUsers();
@@ -49,6 +54,86 @@ export function renderUsersList() {
     </div>`,
     )
     .join('');
+}
+
+export function renderTrashList() {
+  const container = document.getElementById('user-trash-list');
+  const deletedUsers = state.users.filter((user) => user.deleted);
+  if (deletedUsers.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:13px">La corbeille est vide.</p>';
+    return;
+  }
+
+  container.innerHTML = deletedUsers
+    .map(
+      (user) => `
+    <div class="user-row user-trash-row">
+      <div class="user-avatar" style="background:${user.color}">${userAvatarContent(user)}</div>
+      <div style="flex:1">
+        <div class="user-row-name deleted-user-name">${escapeHtml(user.name)}</div>
+        <div class="user-row-rules">Utilisateur supprimé${formatDeletedAt(user.deletedAt)}</div>
+      </div>
+      <button class="icon-btn" onclick="restoreUser('${user.id}')" title="Restaurer">↩️</button>
+      <button class="icon-btn" onclick="permanentlyDeleteUser('${user.id}')" title="Supprimer définitivement">🗑️</button>
+    </div>`,
+    )
+    .join('');
+}
+
+export function restoreUser(userId) {
+  const user = state.users.find((item) => item.id === userId);
+  if (!user || !user.deleted) return;
+  user.deleted = false;
+  delete user.deletedAt;
+  saveData();
+  renderTrashList();
+  renderUsersList();
+  renderAll();
+  showToast('Utilisateur restauré');
+}
+
+export async function permanentlyDeleteUser(userId) {
+  const user = state.users.find((item) => item.id === userId);
+  if (!user || !user.deleted) return;
+  const confirmed = await showConfirm(
+    `Supprimer définitivement ${user.name} ? Ses assignations seront retirées des créneaux.`,
+    'Supprimer définitivement',
+    'Supprimer',
+    'btn-danger',
+  );
+  if (!confirmed) {
+    showModal('user-trash-modal');
+    return;
+  }
+
+  state.users = state.users.filter((item) => item.id !== userId);
+  let removedSlotCount = 0;
+  state.slots = state.slots.filter((slot) => {
+    const userIds = slot.userIds || [];
+    if (!userIds.includes(userId)) return true;
+
+    slot.userIds = userIds.filter((id) => id !== userId);
+    if (slot.userIds.length === 0) {
+      removedSlotCount += 1;
+      return false;
+    }
+    return true;
+  });
+  saveData();
+  renderTrashList();
+  renderAll();
+  showModal('user-trash-modal');
+  showToast(
+    removedSlotCount
+      ? `Utilisateur supprimé définitivement (${removedSlotCount} créneau(x) supprimé(s))`
+      : 'Utilisateur supprimé définitivement',
+  );
+}
+
+function formatDeletedAt(deletedAt) {
+  if (!deletedAt) return '';
+  const date = new Date(deletedAt);
+  return Number.isNaN(date.getTime()) ? '' : ` le ${date.toLocaleDateString('fr-FR')}`;
 }
 
 export function editUser(userId) {

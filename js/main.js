@@ -11,7 +11,16 @@ import {
   setDisplayUser,
 } from './calendar.js';
 import { openSlotModal, saveSlot, deleteSlot } from './modals/slot-modal.js';
-import { openUsersModal, saveUser, cancelEditUser, editUser, removeUser } from './modals/user-modal.js';
+import {
+  openUsersModal,
+  openUserTrashModal,
+  saveUser,
+  cancelEditUser,
+  editUser,
+  removeUser,
+  restoreUser,
+  permanentlyDeleteUser,
+} from './modals/user-modal.js';
 import { autoFillWeek, confirmAutoFill } from './modals/autofill-modal.js';
 import { showModal, closeAllModals } from './modals/modal.js';
 import {
@@ -45,10 +54,13 @@ window.openSlotModal = openSlotModal;
 window.saveSlot = saveSlot;
 window.deleteSlot = deleteSlot;
 window.openUsersModal = openUsersModal;
+window.openUserTrashModal = openUserTrashModal;
 window.saveUser = saveUser;
 window.cancelEditUser = cancelEditUser;
 window.editUser = editUser;
 window.removeUser = removeUser;
+window.restoreUser = restoreUser;
+window.permanentlyDeleteUser = permanentlyDeleteUser;
 window.autoFillWeek = autoFillWeek;
 window.confirmAutoFill = confirmAutoFill;
 window.exportData = exportData;
