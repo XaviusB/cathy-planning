@@ -178,6 +178,19 @@ h1 {
 .dashboard-table-total {
   background: var(--surface2);
 }
+.dashboard-table-drag-handle {
+  width: 32px;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+}
+.dashboard-table tbody tr.user-reorder-before > th,
+.dashboard-table tbody tr.user-reorder-before > td {
+  border-top: 3px solid var(--primary);
+}
+.dashboard-table tbody tr.user-reorder-after > th,
+.dashboard-table tbody tr.user-reorder-after > td {
+  border-bottom: 3px solid var(--primary);
+}
 
 .hidden { display: none !important; }
 
@@ -344,11 +357,30 @@ h1 {
 }
 
 .user-card {
+  position: relative;
   background: var(--surface2);
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
   padding: 12px;
   margin-bottom: 10px;
+}
+.user-card.user-reorder-before::before,
+.user-card.user-reorder-after::after {
+  content: '';
+  position: absolute;
+  left: -2px;
+  right: -2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px rgba(79,134,247,0.25);
+  pointer-events: none;
+}
+.user-card.user-reorder-before::before {
+  top: -7px;
+}
+.user-card.user-reorder-after::after {
+  bottom: -7px;
 }
 .user-card-header {
   display: flex;

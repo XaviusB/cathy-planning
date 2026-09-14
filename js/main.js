@@ -132,8 +132,8 @@ function init() {
     }
   });
 
-  // Delegated drag handler for user avatars in the dashboard panel
-  document.getElementById('dashboard-content').addEventListener('mousedown', (e) => {
+  // Delegated drag handler for user avatars in both dashboard views
+  document.querySelector('.main-layout').addEventListener('mousedown', (e) => {
     const handle = e.target.closest('.user-drag-handle, .user-drag-hint');
     if (!handle) return;
     const userId =

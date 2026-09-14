@@ -50,11 +50,11 @@ export function renderDashboard() {
 
     const periodStatLabel = state.view === 'month' ? '6 semaines' : 'Semaine';
 
-    html += `<div class="user-card">
+    html += `<div class="user-card" data-user-id="${user.id}">
       <div class="user-card-header">
         <div class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser vers le planning">${userInitials(user.name)}</div>
         <div class="user-card-name">${escapeHtml(user.name)}</div>
-        <span class="user-drag-hint" title="Glisser pour créer/assigner un créneau">⠿</span>
+        <span class="user-drag-hint" title="Glisser vers le planning ou réordonner les utilisateurs">⠿</span>
       </div>
       <div class="user-stat"><span>${periodStatLabel}</span><span>${weekHours.toFixed(1)}h / ${user.maxHours}h</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
@@ -101,13 +101,13 @@ function renderDashboardTable() {
   html += `<div class="dashboard-table-wrapper"><table class="dashboard-table">
     <thead><tr><th>Utilisateur</th>
       ${weeks.map((week) => `<th>Semaine<br>${week.start.getDate()} ${MONTH_NAMES[week.start.getMonth()]}</th>`).join('')}
-      <th>Total</th>
+      <th>Total</th><th aria-label="Réordonner les utilisateurs"></th>
     </tr></thead><tbody>`;
 
   state.users.forEach((user) => {
     let totalHours = 0;
-    html += `<tr><th scope="row"><span class="dashboard-table-user">
-      <span class="user-avatar" style="background:${user.color}">${userInitials(user.name)}</span>
+    html += `<tr data-user-id="${user.id}"><th scope="row"><span class="dashboard-table-user">
+      <span class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser pour réordonner">${userInitials(user.name)}</span>
       ${escapeHtml(user.name)}
     </span></th>`;
 
@@ -132,7 +132,10 @@ function renderDashboardTable() {
       </td>`;
     });
 
-    html += `<td class="dashboard-table-total"><strong>${totalHours.toFixed(1)}h</strong></td></tr>`;
+    html += `<td class="dashboard-table-total"><strong>${totalHours.toFixed(1)}h</strong></td>
+      <td class="dashboard-table-drag-handle">
+        <span class="user-drag-hint" data-user-id="${user.id}" title="Glisser pour réordonner">⠿</span>
+      </td></tr>`;
   });
 
   container.innerHTML = `${html}</tbody></table></div>`;
