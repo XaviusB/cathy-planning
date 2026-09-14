@@ -1,6 +1,6 @@
 import { state, saveDashboardRange } from '../state.js';
 import { MONTH_NAMES } from '../constants.js';
-import { formatDate, sameDay } from '../utils/date.js';
+import { addDays, formatDate, getWeekStart, parseDate, sameDay } from '../utils/date.js';
 import { showModal, closeAllModals } from './modal.js';
 import { renderDashboard } from '../dashboard.js';
 
@@ -10,7 +10,10 @@ let baseMonthOffset = 0; // 0 = current month, shifts when navigating with ‹ /
 
 export function openDateRangeModal() {
   selection = state.dashboardRange
-    ? { start: state.dashboardRange.start, end: state.dashboardRange.end }
+    ? {
+      start: normalizeDateToWeekStart(state.dashboardRange.start),
+      end: normalizeDateToWeekEnd(state.dashboardRange.end),
+    }
     : { start: null, end: null };
   baseMonthOffset = 0;
   showModal('date-range-modal');
@@ -28,14 +31,15 @@ export function navigateDateRangeMonths(dir) {
 }
 
 export function selectDateRangeDay(dateStr) {
+  const weekStart = normalizeDateToWeekStart(dateStr);
   if (!selection.start || (selection.start && selection.end)) {
     // Starting a fresh selection
-    selection = { start: dateStr, end: null };
-  } else if (dateStr < selection.start) {
+    selection = { start: weekStart, end: null };
+  } else if (weekStart < selection.start) {
     // Clicked before the current start: make it the new start
-    selection = { start: dateStr, end: null };
+    selection = { start: weekStart, end: null };
   } else {
-    selection.end = dateStr;
+    selection.end = normalizeDateToWeekEnd(dateStr);
   }
   renderDateRangeCalendars();
 }
@@ -107,7 +111,8 @@ function renderDateRangeCalendars() {
       }
       if (selection.start && !selection.end && dateStr === selection.start) cls += ' in-range';
 
-      html += `<span class="${cls}" onclick="selectDateRangeDay('${dateStr}')">${cellDate.getDate()}</span>`;
+      const todayLabel = isToday ? ' title="Aujourd\'hui" aria-current="date"' : '';
+      html += `<span class="${cls}"${todayLabel} onclick="selectDateRangeDay('${dateStr}')">${cellDate.getDate()}</span>`;
     });
 
     html += `</div></div>`;
@@ -133,4 +138,12 @@ function renderDateRangeCalendars() {
 function formatHuman(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
   return `${d} ${MONTH_NAMES[m - 1]} ${y}`;
+}
+
+function normalizeDateToWeekStart(dateStr) {
+  return formatDate(getWeekStart(parseDate(dateStr)));
+}
+
+function normalizeDateToWeekEnd(dateStr) {
+  return formatDate(addDays(getWeekStart(parseDate(dateStr)), 6));
 }

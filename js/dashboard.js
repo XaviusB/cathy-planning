@@ -1,5 +1,5 @@
 import { state, saveDashboardRange } from './state.js';
-import { MONTH_NAMES, DAY_NAMES } from './constants.js';
+import { MONTH_NAMES, DAY_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
 import { getWeekStart, addDays, formatDate, slotDurationMin, timeToMin, parseDate } from './utils/date.js';
 import { escapeHtml, userInitials } from './utils/dom.js';
 
@@ -17,8 +17,8 @@ export function renderDashboard() {
 
   let ws, we, wsStr, weStr, periodLabel;
   if (state.view === 'month') {
-    ws = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth(), 1);
-    we = new Date(state.currentDate.getFullYear(), state.currentDate.getMonth() + 1, 0);
+    ws = getWeekStart(state.currentDate);
+    we = addDays(ws, MONTH_VIEW_WEEKS * 7 - 1);
   } else {
     ws = getWeekStart(state.currentDate);
     we = addDays(ws, 6);
@@ -26,7 +26,7 @@ export function renderDashboard() {
   wsStr = formatDate(ws);
   weStr = formatDate(we);
   periodLabel = state.view === 'month'
-    ? `${MONTH_NAMES[ws.getMonth()]} ${ws.getFullYear()}`
+    ? `Du ${formatDate(ws)} au ${formatDate(we)}`
     : `Semaine du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]}`;
 
   let html = `<div class="dashboard-period-label">
@@ -48,7 +48,7 @@ export function renderDashboard() {
         ? 'var(--danger)'
         : 'var(--success)';
 
-    const periodStatLabel = state.view === 'month' ? 'Mois' : 'Semaine';
+    const periodStatLabel = state.view === 'month' ? '6 semaines' : 'Semaine';
 
     html += `<div class="user-card">
       <div class="user-card-header">
