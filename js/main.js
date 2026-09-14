@@ -2,9 +2,25 @@ import { setRenderAll } from './renderer.js';
 import { loadData, saveData, exportData, importData, resetData, state } from './state.js';
 import { renderCalendar } from './calendar.js';
 import { renderWeekView } from './views/week-view.js';
-import { setView, navigate, goToToday, setDisplayMode, setDisplayUser } from './calendar.js';
+import {
+  setView,
+  navigate,
+  goToToday,
+  openWeekFromDashboard,
+  setDisplayMode,
+  setDisplayUser,
+} from './calendar.js';
 import { openSlotModal, saveSlot, deleteSlot } from './modals/slot-modal.js';
-import { openUsersModal, saveUser, cancelEditUser, editUser, removeUser } from './modals/user-modal.js';
+import {
+  openUsersModal,
+  openUserTrashModal,
+  saveUser,
+  cancelEditUser,
+  editUser,
+  removeUser,
+  restoreUser,
+  permanentlyDeleteUser,
+} from './modals/user-modal.js';
 import { autoFillWeek, confirmAutoFill } from './modals/autofill-modal.js';
 import { showModal, closeAllModals } from './modals/modal.js';
 import {
@@ -31,16 +47,20 @@ setRenderAll(renderCalendar);
 window.setView = setView;
 window.navigate = navigate;
 window.goToToday = goToToday;
+window.openWeekFromDashboard = openWeekFromDashboard;
 window.setDisplayMode = setDisplayMode;
 window.setDisplayUser = setDisplayUser;
 window.openSlotModal = openSlotModal;
 window.saveSlot = saveSlot;
 window.deleteSlot = deleteSlot;
 window.openUsersModal = openUsersModal;
+window.openUserTrashModal = openUserTrashModal;
 window.saveUser = saveUser;
 window.cancelEditUser = cancelEditUser;
 window.editUser = editUser;
 window.removeUser = removeUser;
+window.restoreUser = restoreUser;
+window.permanentlyDeleteUser = permanentlyDeleteUser;
 window.autoFillWeek = autoFillWeek;
 window.confirmAutoFill = confirmAutoFill;
 window.exportData = exportData;
@@ -132,8 +152,8 @@ function init() {
     }
   });
 
-  // Delegated drag handler for user avatars in the dashboard panel
-  document.getElementById('dashboard-content').addEventListener('mousedown', (e) => {
+  // Delegated drag handler for user avatars in both dashboard views
+  document.querySelector('.main-layout').addEventListener('mousedown', (e) => {
     const handle = e.target.closest('.user-drag-handle, .user-drag-hint');
     if (!handle) return;
     const userId =

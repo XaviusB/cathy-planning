@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state, getActiveUsers } from './state.js';
 import { MONTH_NAMES, DAY_NAMES } from './constants.js';
 import { getWeekStart, addDays, formatDate, slotDurationMin } from './utils/date.js';
 import { showToast } from './utils/dom.js';
@@ -29,7 +29,8 @@ function loadJsPdf() {
  * Exporte un PDF par utilisateur pour la semaine actuellement affichée.
  */
 export async function exportWeekPdf() {
-  if (state.users.length === 0) {
+  const activeUsers = getActiveUsers();
+  if (activeUsers.length === 0) {
     showToast('Aucun utilisateur à exporter', 'error');
     return;
   }
@@ -49,13 +50,13 @@ export async function exportWeekPdf() {
   const weStr = formatDate(days[6]);
   const periodLabel = `Semaine du ${days[0].getDate()} ${MONTH_NAMES[days[0].getMonth()]} au ${days[6].getDate()} ${MONTH_NAMES[days[6].getMonth()]} ${days[6].getFullYear()}`;
 
-  state.users.forEach((user) => {
+  activeUsers.forEach((user) => {
     const doc = new JsPDF({ unit: 'mm', format: 'a4' });
     buildUserWeekPdf(doc, user, days, wsStr, weStr, periodLabel);
     doc.save(`planning-${slugify(user.name)}-${wsStr}.pdf`);
   });
 
-  showToast(`${state.users.length} PDF exporté(s)`);
+  showToast(`${activeUsers.length} PDF exporté(s)`);
 }
 
 function buildUserWeekPdf(doc, user, days, wsStr, weStr, periodLabel) {
