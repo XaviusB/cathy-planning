@@ -1,4 +1,4 @@
-import { state, saveData } from '../state.js';
+import { state, saveData, getActiveUsers } from '../state.js';
 import { renderAll } from '../renderer.js';
 import { showModal } from './modal.js';
 import { showConfirm } from './confirm.js';
@@ -29,12 +29,13 @@ export function openUsersModal() {
 
 export function renderUsersList() {
   const container = document.getElementById('users-list');
-  if (state.users.length === 0) {
+  const activeUsers = getActiveUsers();
+  if (activeUsers.length === 0) {
     container.innerHTML =
       '<p style="color:var(--text-muted);font-size:13px">Aucun utilisateur</p>';
     return;
   }
-  container.innerHTML = state.users
+  container.innerHTML = activeUsers
     .map(
       (u) => `
     <div class="user-row">
@@ -117,18 +118,18 @@ export function saveUser() {
 
 export async function removeUser(userId) {
   const ok = await showConfirm(
-    "Supprimer cet utilisateur ? Ses assignations seront retirées.",
+    "Supprimer cet utilisateur ? Ses assignations seront conservées et son nom sera barré.",
     "Supprimer l'utilisateur",
   );
   if (!ok) return;
-  state.users = state.users.filter((u) => u.id !== userId);
-  state.slots.forEach((s) => {
-    s.userIds = (s.userIds || []).filter((id) => id !== userId);
-  });
+  const user = state.users.find((item) => item.id === userId);
+  if (!user) return;
+  user.deleted = true;
+  user.deletedAt = new Date().toISOString();
   saveData();
   renderUsersList();
   renderAll();
-  showToast('Utilisateur supprimé');
+  showToast('Utilisateur supprimé, ses assignations sont conservées');
 }
 
 function ensurePhotoEditorBound() {

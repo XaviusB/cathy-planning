@@ -402,9 +402,15 @@ h1 {
 }
 #current-period {
   font-weight: 600;
-  min-width: 180px;
+  flex: 0 0 260px;
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
   text-align: center;
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* =====================
@@ -662,6 +668,7 @@ h1 {
 .slot-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .slot-time  { font-size: 10px; opacity: 0.8; }
 .slot-users { font-size: 10px; opacity: 0.85; margin-top: 1px; }
+.deleted-user-name { text-decoration: line-through; opacity: 0.75; }
 .slot-user-dot {
   display: inline-block;
   width: 8px; height: 8px;

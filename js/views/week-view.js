@@ -122,13 +122,15 @@ function _renderSlots(days) {
       const userDots = assignedUsers
         .map((u) => `<span class="slot-user-dot" style="background:${u.color}" title="${u.name}"></span>`)
         .join('');
-      const userNames = assignedUsers.map((u) => u.name).join(', ');
+      const userNames = assignedUsers
+        .map((u) => `<span class="${u.deleted ? 'deleted-user-name' : ''}">${escapeHtml(u.name)}</span>`)
+        .join(', ');
 
       el.innerHTML = `
         <div class="slot-resize-handle slot-resize-top"></div>
         <div class="slot-title">${escapeHtml(slot.title || 'Créneau')}</div>
         <div class="slot-time">${slot.start}–${slot.end}</div>
-        ${assignedUsers.length ? `<div class="slot-users">${userDots} ${escapeHtml(userNames)}</div>` : ''}
+        ${assignedUsers.length ? `<div class="slot-users">${userDots} ${userNames}</div>` : ''}
         <div class="slot-resize-handle slot-resize-bottom"></div>
       `;
 

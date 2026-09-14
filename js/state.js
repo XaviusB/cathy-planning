@@ -24,6 +24,10 @@ export const state = {
   displayUserId: null,
 };
 
+export function getActiveUsers() {
+  return state.users.filter((user) => !user.deleted);
+}
+
 export function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);

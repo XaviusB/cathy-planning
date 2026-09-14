@@ -1,4 +1,4 @@
-import { state, saveDashboardRange } from './state.js';
+import { state, saveDashboardRange, getActiveUsers } from './state.js';
 import { MONTH_NAMES, DAY_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
 import { getWeekStart, addDays, formatDate, slotDurationMin, timeToMin, parseDate } from './utils/date.js';
 import { escapeHtml, userAvatarContent } from './utils/dom.js';
@@ -15,7 +15,8 @@ export function renderDashboard() {
   }
 
   const container = document.getElementById(state.view === 'dashboard' ? 'dashboard-view' : 'dashboard-content');
-  if (state.users.length === 0) {
+  const activeUsers = getActiveUsers();
+  if (activeUsers.length === 0) {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Ajoutez des utilisateurs pour voir les statistiques.</p>';
     return;
   }
@@ -38,7 +39,7 @@ export function renderDashboard() {
     <span>${periodLabel}</span>
   </div>`;
 
-  state.users.forEach((user) => {
+  activeUsers.forEach((user) => {
     const weekSlots = state.slots.filter(
       (s) => s.date >= wsStr && s.date <= weStr && (s.userIds || []).includes(user.id),
     );
@@ -99,7 +100,8 @@ function renderDashboardTable() {
     ${state.dashboardRange ? `<button type="button" class="dashboard-period-clear" onclick="clearDashboardRange()" title="Revenir à la semaine en cours">✕</button>` : ''}
   </div>`;
 
-  if (state.users.length === 0) {
+  const activeUsers = getActiveUsers();
+  if (activeUsers.length === 0) {
     container.innerHTML = `${html}<p style="color:var(--text-muted);font-size:13px">Ajoutez des utilisateurs pour voir les statistiques.</p>`;
     return;
   }
@@ -110,7 +112,7 @@ function renderDashboardTable() {
       <th>Total</th><th aria-label="Réordonner les utilisateurs"></th>
     </tr></thead><tbody>`;
 
-  state.users.forEach((user) => {
+  activeUsers.forEach((user) => {
     let totalHours = 0;
     html += `<tr data-user-id="${user.id}"><th scope="row"><span class="dashboard-table-user">
       <span class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser pour réordonner">${userAvatarContent(user)}</span>

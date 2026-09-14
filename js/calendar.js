@@ -1,4 +1,4 @@
-import { state, saveViewPreferences, saveDashboardRange } from './state.js';
+import { state, saveViewPreferences, saveDashboardRange, getActiveUsers } from './state.js';
 import { MONTH_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
 import { getWeekStart, addDays, parseDate } from './utils/date.js';
 import { renderWeekView } from './views/week-view.js';
@@ -52,8 +52,9 @@ export function openWeekFromDashboard(dateStr) {
 
 export function setDisplayMode(mode) {
   state.displayMode = mode === 'user' ? 'user' : 'overlap';
-  if (state.displayMode === 'user' && !state.displayUserId && state.users.length) {
-    state.displayUserId = state.users[0].id;
+  const activeUsers = getActiveUsers();
+  if (state.displayMode === 'user' && !state.displayUserId && activeUsers.length) {
+    state.displayUserId = activeUsers[0].id;
   }
   saveViewPreferences();
   renderCalendar();
@@ -110,11 +111,12 @@ function renderDisplayControls() {
   const userControl = document.getElementById('display-user-control');
   if (!mode || !userSelect || !userControl) return;
 
-  userSelect.innerHTML = state.users
+  const activeUsers = getActiveUsers();
+  userSelect.innerHTML = activeUsers
     .map((user) => `<option value="${user.id}">${escapeHtml(user.name)}</option>`)
     .join('');
-  if (state.displayMode === 'user' && !state.users.some((user) => user.id === state.displayUserId)) {
-    state.displayUserId = state.users[0]?.id || null;
+  if (state.displayMode === 'user' && !activeUsers.some((user) => user.id === state.displayUserId)) {
+    state.displayUserId = activeUsers[0]?.id || null;
   }
   mode.value = state.displayMode;
   userSelect.value = state.displayUserId || '';
