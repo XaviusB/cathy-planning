@@ -7,7 +7,6 @@ import http.server
 import socketserver
 import sys
 import os
-import webbrowser
 from pathlib import Path
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 5500
@@ -53,7 +52,6 @@ def main():
         print(f"\n  🚀  Serveur démarré sur {url}")
         print(f"  📁  Dossier : {Path.cwd()}")
         print(f"  ⌨️   Ctrl+C pour arrêter\n")
-        webbrowser.open(url)
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

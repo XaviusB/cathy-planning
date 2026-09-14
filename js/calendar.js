@@ -1,5 +1,5 @@
 import { state, saveViewPreferences, saveDashboardRange } from './state.js';
-import { MONTH_NAMES } from './constants.js';
+import { MONTH_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
 import { getWeekStart, addDays } from './utils/date.js';
 import { renderWeekView } from './views/week-view.js';
 import { renderMonthView } from './views/month-view.js';
@@ -25,11 +25,7 @@ export function navigate(dir) {
   if (state.view === 'week') {
     state.currentDate = addDays(state.currentDate, dir * 7);
   } else if (state.view === 'month') {
-    state.currentDate = new Date(
-      state.currentDate.getFullYear(),
-      state.currentDate.getMonth() + dir,
-      1,
-    );
+    state.currentDate = addDays(state.currentDate, dir * 7);
   }
   if (state.dashboardRange) {
     state.dashboardRange = null;
@@ -71,7 +67,9 @@ function updatePeriodLabel() {
       el.textContent = `${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} – ${we.getDate()} ${MONTH_NAMES[we.getMonth()]} ${ws.getFullYear()}`;
     }
   } else if (state.view === 'month') {
-    el.textContent = `${MONTH_NAMES[state.currentDate.getMonth()]} ${state.currentDate.getFullYear()}`;
+    const ws = getWeekStart(state.currentDate);
+    const we = addDays(ws, MONTH_VIEW_WEEKS * 7 - 1);
+    el.textContent = `Du ${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} au ${we.getDate()} ${MONTH_NAMES[we.getMonth()]} ${we.getFullYear()}`;
   } else {
     el.textContent = 'Tableau de bord';
   }

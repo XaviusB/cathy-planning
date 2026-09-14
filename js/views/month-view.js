@@ -1,6 +1,6 @@
 import { state, isSlotVisible } from '../state.js';
-import { HOUR_START, HOUR_END, DAY_NAMES_SHORT } from '../constants.js';
-import { formatDate, sameDay, timeToMin } from '../utils/date.js';
+import { HOUR_START, HOUR_END, DAY_NAMES_SHORT, MONTH_VIEW_WEEKS } from '../constants.js';
+import { getWeekStart, addDays, formatDate, sameDay, timeToMin } from '../utils/date.js';
 import { escapeHtml, getContrastColor, effectiveSlotColor, slotBackground } from '../utils/dom.js';
 import { openSlotModal } from '../modals/slot-modal.js';
 import { startDrag } from '../drag/slot-drag.js';
@@ -8,14 +8,12 @@ import { startResize } from '../drag/slot-resize.js';
 import { startGridDraw } from '../drag/grid-draw.js';
 import { layoutOverlappingSlots } from '../utils/slot-layout.js';
 
-// "Agenda" month view: one horizontal row per day of the month, each row showing
-// a 0h–24h timeline with slots positioned/sized proportionally to their time —
-// avoids a cramped ~31-column grid while still conveying schedule density at a glance.
+// "Agenda" month view: six weekly groups of horizontal day rows, each row showing
+// a 0h–24h timeline with slots positioned/sized proportionally to their time.
 
 export function renderMonthView() {
-  const year = state.currentDate.getFullYear();
-  const month = state.currentDate.getMonth();
-  const lastDay = new Date(year, month + 1, 0);
+  const start = getWeekStart(state.currentDate);
+  const days = Array.from({ length: MONTH_VIEW_WEEKS * 7 }, (_, i) => addDays(start, i));
   const today = new Date();
 
   const container = document.getElementById('month-view');
@@ -29,8 +27,9 @@ export function renderMonthView() {
   }
   html += `</div></div><div class="agenda-days">`;
 
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    const cellDate = new Date(year, month, d);
+  days.forEach((cellDate, index) => {
+    if (index % 7 === 0) html += '<div class="agenda-week">';
+
     const dateStr = formatDate(cellDate);
     const isToday = sameDay(cellDate, today);
     const isRestDay = state.settings.weeklyRestDays.includes(cellDate.getDay());
@@ -43,7 +42,7 @@ export function renderMonthView() {
     html += `<div class="agenda-row${isToday ? ' today' : ''}">`;
     html += `<div class="agenda-day-label" onclick="handleMonthCellClick(event,'${dateStr}')">
       <span class="agenda-day-name">${DAY_NAMES_SHORT[cellDate.getDay()]}</span>
-      <span class="agenda-day-num">${d}</span>
+      <span class="agenda-day-num">${cellDate.getDate()}</span>
     </div>`;
     html += `<div class="agenda-track${isRestDay ? ' standard-rest-day' : ' standard-day'}" data-date="${dateStr}"
       style="--standard-start:${standardStart}%;--standard-width:${standardWidth}%;">`;
@@ -54,27 +53,28 @@ export function renderMonthView() {
     }
 
     html += `</div></div>`;
-  }
+    if (index % 7 === 6) html += '</div>';
+  });
 
   html += '</div>';
   container.innerHTML = html;
 
-  _renderSlots(year, month, lastDay.getDate());
+  _renderSlots(days);
 
-  if (today.getFullYear() === year && today.getMonth() === month) {
+  if (days.some((day) => sameDay(day, today))) {
     const todayRow = container.querySelector('.agenda-row.today');
     if (todayRow) todayRow.scrollIntoView({ block: 'center' });
   }
 }
 
-function _renderSlots(year, month, numDays) {
+function _renderSlots(days) {
   const container = document.getElementById('month-view');
   const tracks = container.querySelectorAll('.agenda-track');
 
-  for (let d = 1; d <= numDays; d++) {
-    const dateStr = formatDate(new Date(year, month, d));
-    const track = tracks[d - 1];
-    if (!track) continue;
+  days.forEach((day, index) => {
+    const dateStr = formatDate(day);
+    const track = tracks[index];
+    if (!track) return;
 
     const daySlots = state.slots.filter((s) => s.date === dateStr && isSlotVisible(s));
     const layouts = layoutOverlappingSlots(daySlots);
@@ -121,7 +121,7 @@ function _renderSlots(year, month, numDays) {
     });
 
     track.addEventListener('mousedown', (e) => startGridDraw(e, track));
-  }
+  });
 }
 
 export function handleMonthCellClick(event, dateStr) {

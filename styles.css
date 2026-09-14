@@ -619,6 +619,12 @@ h1 {
   display: flex;
   flex-direction: column;
 }
+.agenda-week {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 2px solid var(--border);
+}
+.agenda-week:last-child { border-bottom: none; }
 
 .agenda-row {
   display: grid;
@@ -939,7 +945,15 @@ h1 {
 }
 .date-range-day:hover { background: rgba(79,134,247,0.12); }
 .date-range-day.empty { cursor: default; visibility: hidden; }
-.date-range-day.today { font-weight: 700; color: var(--primary); }
+.date-range-day.today {
+  font-weight: 700;
+  color: var(--primary);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+.date-range-day.today.range-start,
+.date-range-day.today.range-end {
+  box-shadow: inset 0 0 0 2px white;
+}
 .date-range-day.in-range { background: rgba(79,134,247,0.15); border-radius: 0; }
 .date-range-day.range-start,
 .date-range-day.range-end {
