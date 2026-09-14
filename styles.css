@@ -469,6 +469,13 @@ h1 {
   font-weight: 700;
   flex-shrink: 0;
 }
+.user-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  object-fit: cover;
+}
 .user-card-name {
   font-weight: 600;
   font-size: 13px;
@@ -900,6 +907,82 @@ h1 {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(79,134,247,0.15);
+}
+.user-photo-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+}
+.user-photo-editor-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+.user-photo-cropper {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  background: var(--border-light);
+  cursor: grab;
+  touch-action: none;
+}
+.user-photo-cropper.is-dragging {
+  cursor: grabbing;
+}
+.user-photo-cropper img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  user-select: none;
+  pointer-events: none;
+  transform-origin: center;
+}
+.user-photo-preview-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.user-photo-preview {
+  width: 64px;
+  height: 64px;
+  border: 2px solid var(--primary);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.user-photo-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.user-photo-zoom-controls input[type=range] {
+  flex: 1;
+}
+.user-photo-zoom-controls .icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+.user-photo-help {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.user-photo-remove {
+  align-self: flex-start;
+  font-size: 11px;
+  padding: 4px 8px;
 }
 
 .checkbox-group {

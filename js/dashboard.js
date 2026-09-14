@@ -1,7 +1,7 @@
 import { state, saveDashboardRange } from './state.js';
 import { MONTH_NAMES, DAY_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
 import { getWeekStart, addDays, formatDate, slotDurationMin, timeToMin, parseDate } from './utils/date.js';
-import { escapeHtml, userInitials } from './utils/dom.js';
+import { escapeHtml, userAvatarContent } from './utils/dom.js';
 
 const OVERLIMIT_TOOLTIP_DELAY = 900;
 let overlimitTooltipTimer = null;
@@ -57,7 +57,7 @@ export function renderDashboard() {
 
     html += `<div class="user-card" data-user-id="${user.id}">
       <div class="user-card-header">
-        <div class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser vers le planning">${userInitials(user.name)}</div>
+        <div class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser vers le planning">${userAvatarContent(user)}</div>
         <div class="user-card-name">${escapeHtml(user.name)}</div>
         <span class="user-drag-hint" title="Glisser vers le planning ou réordonner les utilisateurs">⠿</span>
       </div>
@@ -113,7 +113,7 @@ function renderDashboardTable() {
   state.users.forEach((user) => {
     let totalHours = 0;
     html += `<tr data-user-id="${user.id}"><th scope="row"><span class="dashboard-table-user">
-      <span class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser pour réordonner">${userInitials(user.name)}</span>
+      <span class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser pour réordonner">${userAvatarContent(user)}</span>
       ${escapeHtml(user.name)}
     </span></th>`;
 
