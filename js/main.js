@@ -2,7 +2,14 @@ import { setRenderAll } from './renderer.js';
 import { loadData, saveData, exportData, importData, resetData, state } from './state.js';
 import { renderCalendar } from './calendar.js';
 import { renderWeekView } from './views/week-view.js';
-import { setView, navigate, goToToday, setDisplayMode, setDisplayUser } from './calendar.js';
+import {
+  setView,
+  navigate,
+  goToToday,
+  openWeekFromDashboard,
+  setDisplayMode,
+  setDisplayUser,
+} from './calendar.js';
 import { openSlotModal, saveSlot, deleteSlot } from './modals/slot-modal.js';
 import { openUsersModal, saveUser, cancelEditUser, editUser, removeUser } from './modals/user-modal.js';
 import { autoFillWeek, confirmAutoFill } from './modals/autofill-modal.js';
@@ -31,6 +38,7 @@ setRenderAll(renderCalendar);
 window.setView = setView;
 window.navigate = navigate;
 window.goToToday = goToToday;
+window.openWeekFromDashboard = openWeekFromDashboard;
 window.setDisplayMode = setDisplayMode;
 window.setDisplayUser = setDisplayUser;
 window.openSlotModal = openSlotModal;

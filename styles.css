@@ -142,6 +142,20 @@ h1 {
   color: var(--text-muted);
   font-weight: 600;
 }
+.dashboard-week-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+}
+.dashboard-week-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .dashboard-table tbody th {
   min-width: 170px;
   text-align: left;
@@ -168,6 +182,61 @@ h1 {
   display: block;
   margin-top: 3px;
   color: var(--danger);
+}
+.dashboard-overlimit-trigger {
+  cursor: help;
+}
+.dashboard-overlimit-popover {
+  position: fixed;
+  z-index: 1001;
+  width: min(340px, calc(100vw - 24px));
+  max-height: min(420px, calc(100vh - 24px));
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+  color: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+}
+.dashboard-overlimit-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--danger);
+}
+.dashboard-overlimit-subtitle {
+  margin-top: 3px;
+  color: var(--text-muted);
+}
+.dashboard-overlimit-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-light);
+}
+.dashboard-overlimit-summary strong {
+  color: var(--danger);
+}
+.dashboard-overlimit-list-title {
+  margin-top: 8px;
+  font-weight: 600;
+}
+.dashboard-overlimit-popover ul {
+  margin: 5px 0 0;
+  padding-left: 18px;
+}
+.dashboard-overlimit-popover li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+.dashboard-overlimit-popover li strong {
+  white-space: nowrap;
 }
 .dashboard-table .dashboard-cell-danger {
   background: rgba(231, 76, 60, 0.1);

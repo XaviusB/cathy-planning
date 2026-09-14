@@ -1,6 +1,6 @@
 import { state, saveViewPreferences, saveDashboardRange } from './state.js';
 import { MONTH_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
-import { getWeekStart, addDays } from './utils/date.js';
+import { getWeekStart, addDays, parseDate } from './utils/date.js';
 import { renderWeekView } from './views/week-view.js';
 import { renderMonthView } from './views/month-view.js';
 import { renderDashboard } from './dashboard.js';
@@ -37,6 +37,15 @@ export function navigate(dir) {
 
 export function goToToday() {
   state.currentDate = new Date();
+  saveViewPreferences();
+  renderCalendar();
+}
+
+export function openWeekFromDashboard(dateStr) {
+  const date = parseDate(dateStr);
+  if (Number.isNaN(date.getTime())) return;
+  state.currentDate = date;
+  state.view = 'week';
   saveViewPreferences();
   renderCalendar();
 }
