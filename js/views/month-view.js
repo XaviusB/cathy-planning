@@ -17,6 +17,8 @@ export function renderMonthView() {
   const today = new Date();
 
   const container = document.getElementById('month-view');
+  const preserveScroll = container.dataset.rendered === 'true';
+  const scrollTop = container.scrollTop;
 
   let html = `<div class="agenda-hour-ruler">
     <div class="agenda-label-spacer"></div>
@@ -61,10 +63,16 @@ export function renderMonthView() {
 
   _renderSlots(days);
 
-  if (days.some((day) => sameDay(day, today))) {
+  if (preserveScroll) {
+    container.scrollTop = scrollTop;
+  } else if (days.some((day) => sameDay(day, today))) {
     const todayRow = container.querySelector('.agenda-row.today');
-    if (todayRow) todayRow.scrollIntoView({ block: 'center' });
+    if (todayRow) {
+      const rowTop = todayRow.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      container.scrollTop = Math.max(0, container.scrollTop + rowTop - (container.clientHeight - todayRow.offsetHeight) / 2);
+    }
   }
+  container.dataset.rendered = 'true';
 }
 
 function _renderSlots(days) {

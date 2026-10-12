@@ -4,6 +4,9 @@ import { SNAP_MIN, HOUR_START, HOUR_END } from '../constants.js';
 import { slotDurationMin, timeToMin, minToTime } from '../utils/date.js';
 import { getContrastColor, showToast } from '../utils/dom.js';
 
+const MONTH_EDGE_SCROLL_THRESHOLD = 64;
+const MONTH_EDGE_SCROLL_MAX_SPEED = 12;
+
 export let dragState = null;
 export let cancelDrag = null;
 
@@ -31,6 +34,8 @@ export function startDrag(e, slot) {
   const startY = e.clientY;
   const DRAG_THRESHOLD = 4; // px — below this, treat mouseup as a plain click (open modal)
   let hasMoved = false;
+  let monthAutoScrollFrame = null;
+  let latestPointer = null;
 
   const ghost = document.getElementById('drag-ghost');
   ghost.textContent = slot.title || 'Créneau';
@@ -87,6 +92,61 @@ export function startDrag(e, slot) {
     }
   };
 
+  const stopMonthAutoScroll = () => {
+    if (monthAutoScrollFrame !== null) {
+      cancelAnimationFrame(monthAutoScrollFrame);
+      monthAutoScrollFrame = null;
+    }
+  };
+
+  const getMonthScrollDelta = () => {
+    if (state.view !== 'month' || !latestPointer) return 0;
+    const monthView = document.getElementById('month-view');
+    if (!monthView) return 0;
+
+    const rect = monthView.getBoundingClientRect();
+    const distanceFromTop = latestPointer.clientY - rect.top;
+    const distanceFromBottom = rect.bottom - latestPointer.clientY;
+    if (distanceFromTop < MONTH_EDGE_SCROLL_THRESHOLD && monthView.scrollTop > 0) {
+      return -Math.min(
+        MONTH_EDGE_SCROLL_MAX_SPEED,
+        Math.max(1, MONTH_EDGE_SCROLL_THRESHOLD - distanceFromTop),
+      );
+    }
+    if (
+      distanceFromBottom < MONTH_EDGE_SCROLL_THRESHOLD &&
+      monthView.scrollTop < monthView.scrollHeight - monthView.clientHeight
+    ) {
+      return Math.min(
+        MONTH_EDGE_SCROLL_MAX_SPEED,
+        Math.max(1, MONTH_EDGE_SCROLL_THRESHOLD - distanceFromBottom),
+      );
+    }
+    return 0;
+  };
+
+  const autoScrollMonth = () => {
+    monthAutoScrollFrame = null;
+    if (!hasMoved) return;
+
+    const delta = getMonthScrollDelta();
+    if (!delta) return;
+
+    const monthView = document.getElementById('month-view');
+    monthView.scrollTop += delta;
+    const preview = computePreview(latestPointer);
+    dragState.preview = preview;
+    applyPreview(preview);
+    monthAutoScrollFrame = requestAnimationFrame(autoScrollMonth);
+  };
+
+  const scheduleMonthAutoScroll = (ev) => {
+    latestPointer = ev;
+    if (monthAutoScrollFrame === null && getMonthScrollDelta() !== 0) {
+      monthAutoScrollFrame = requestAnimationFrame(autoScrollMonth);
+    }
+  };
+
   const onMouseMove = (ev) => {
     if (!hasMoved) {
       const dx = ev.clientX - startX;
@@ -109,11 +169,13 @@ export function startDrag(e, slot) {
     const preview = computePreview(ev);
     dragState.preview = preview;
     applyPreview(preview);
+    scheduleMonthAutoScroll(ev);
   };
 
   const finishDrag = () => {
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
+    stopMonthAutoScroll();
     ghost.classList.add('hidden');
     document.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
     dragState = null;

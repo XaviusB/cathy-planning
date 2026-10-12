@@ -1,4 +1,4 @@
-import { state, saveViewPreferences, saveDashboardRange, getActiveUsers } from './state.js';
+import { state, saveViewPreferences, getActiveUsers } from './state.js';
 import { MONTH_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
 import { getWeekStart, addDays, parseDate } from './utils/date.js';
 import { renderWeekView } from './views/week-view.js';
@@ -26,10 +26,6 @@ export function navigate(dir) {
     state.currentDate = addDays(state.currentDate, dir * 7);
   } else if (state.view === 'month') {
     state.currentDate = addDays(state.currentDate, dir * 7);
-  }
-  if (state.dashboardRange) {
-    state.dashboardRange = null;
-    saveDashboardRange();
   }
   saveViewPreferences();
   renderCalendar();
