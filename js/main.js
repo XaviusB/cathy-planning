@@ -39,6 +39,8 @@ import { handleMonthCellClick } from './views/month-view.js';
 import { exportWeekPdf } from './export-pdf.js';
 import { initTheme, setTheme, toggleMainMenu, closeMainMenu, toggleSubmenu } from './menu.js';
 import { openSettingsModal, saveSettings, renderSettingsDays } from './modals/settings-modal.js';
+import { clearSelection, getSelectedSlotIds, selectDay } from './selection.js';
+import { showToast } from './utils/dom.js';
 
 // Wire the renderer so all modules can call renderAll() without circular deps
 setRenderAll(renderCalendar);
@@ -71,6 +73,7 @@ window.closeAllModals = closeAllModals;
 window.closeModal = closeModal;
 window.resolveConfirm = resolveConfirm;
 window.handleMonthCellClick = handleMonthCellClick;
+window.selectDay = selectDay;
 window.openDateRangeModal = openDateRangeModal;
 window.resetDateRangeSelection = resetDateRangeSelection;
 window.navigateDateRangeMonths = navigateDateRangeMonths;
@@ -138,17 +141,25 @@ function init() {
       } else {
         closeMainMenu();
         closeAllModals();
+        clearSelection();
       }
     }
 
-    // Hold click on slot + Delete → delete the slot
-    if ((e.key === 'Delete' || e.key === 'Backspace') && dragState?.slot) {
+    if (
+      (e.key === 'Delete' || e.key === 'Backspace') &&
+      getSelectedSlotIds().length &&
+      document.getElementById('modal-overlay')?.classList.contains('hidden') &&
+      !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+    ) {
       e.preventDefault();
-      const slotToDelete = dragState.slot;
       if (cancelDrag) cancelDrag();
-      state.slots = state.slots.filter((s) => s.id !== slotToDelete.id);
+      const selectedIds = new Set(getSelectedSlotIds());
+      const deletedCount = state.slots.filter((slot) => selectedIds.has(slot.id)).length;
+      state.slots = state.slots.filter((slot) => !selectedIds.has(slot.id));
+      clearSelection();
       saveData();
       renderCalendar();
+      showToast(`${deletedCount} créneau(x) supprimé(s)`);
     }
   });
 

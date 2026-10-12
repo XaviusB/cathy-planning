@@ -5,8 +5,10 @@ import { renderWeekView } from './views/week-view.js';
 import { renderMonthView } from './views/month-view.js';
 import { renderDashboard } from './dashboard.js';
 import { escapeHtml } from './utils/dom.js';
+import { clearSelection } from './selection.js';
 
 export function setView(v) {
+  clearSelection();
   state.view = ['week', 'month', 'dashboard'].includes(v) ? v : 'week';
   saveViewPreferences();
   document.getElementById('btn-week').classList.toggle('active', state.view === 'week');
@@ -22,6 +24,7 @@ export function setView(v) {
 }
 
 export function navigate(dir) {
+  clearSelection();
   if (state.view === 'week') {
     state.currentDate = addDays(state.currentDate, dir * 7);
   } else if (state.view === 'month') {
@@ -32,12 +35,14 @@ export function navigate(dir) {
 }
 
 export function goToToday() {
+  clearSelection();
   state.currentDate = new Date();
   saveViewPreferences();
   renderCalendar();
 }
 
 export function openWeekFromDashboard(dateStr) {
+  clearSelection();
   const date = parseDate(dateStr);
   if (Number.isNaN(date.getTime())) return;
   state.currentDate = date;
