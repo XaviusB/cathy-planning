@@ -123,7 +123,7 @@ function _renderSlots(days) {
         <div class="slot-resize-handle slot-resize-right"></div>
       `;
 
-      el.addEventListener('click', (ev) => {
+      el.addEventListener('dblclick', (ev) => {
         ev.stopPropagation();
         if (ev.ctrlKey || ev.metaKey) return;
         openSlotModal(slot.id);

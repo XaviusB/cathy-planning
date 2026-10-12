@@ -226,8 +226,9 @@ export function startDrag(e, slot) {
   };
 
   const onMouseUp = (ev) => {
-    // Plain click (no meaningful movement): let the native click event open the slot modal.
+    // Plain click selects only this slot; the double-click handler opens its modal.
     if (!hasMoved) {
+      selectSlot(slot.id);
       finishDrag();
       return;
     }
