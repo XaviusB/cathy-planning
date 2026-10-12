@@ -7,6 +7,7 @@ import { startDrag } from '../drag/slot-drag.js';
 import { startResize } from '../drag/slot-resize.js';
 import { startGridDraw } from '../drag/grid-draw.js';
 import { layoutOverlappingSlots } from '../utils/slot-layout.js';
+import { isSlotSelected, toggleSlot } from '../selection.js';
 
 export function renderWeekView() {
   const ws = getWeekStart(state.currentDate);
@@ -30,7 +31,7 @@ function _buildHeaderHtml(days, today) {
   html += `<div class="week-time-header"></div>`;
   days.forEach((day) => {
     const isToday = sameDay(day, today);
-    html += `<div class="week-day-header${isToday ? ' today' : ''}" onclick="openSlotModal(null,'${formatDate(day)}')">
+    html += `<div class="week-day-header${isToday ? ' today' : ''}" data-date="${formatDate(day)}" onclick="selectDay('${formatDate(day)}')">
       <span style="font-size:11px">${DAY_NAMES_SHORT[day.getDay()]}</span>
       <span class="day-num">${day.getDate()}</span>
     </div>`;
@@ -100,6 +101,7 @@ function _renderSlots(days) {
 
       const el = document.createElement('div');
       el.className = 'slot-block';
+      if (isSlotSelected(slot.id)) el.classList.add('selected');
       el.dataset.slotId = slot.id;
       el.style.top = `${top}%`;
       el.style.height = `${Math.max(height, 1.2)}%`;
@@ -122,20 +124,50 @@ function _renderSlots(days) {
       const userDots = assignedUsers
         .map((u) => `<span class="slot-user-dot" style="background:${u.color}" title="${u.name}"></span>`)
         .join('');
-      const userNames = assignedUsers.map((u) => u.name).join(', ');
+      const userNames = assignedUsers
+        .map((u) => `<span class="${u.deleted ? 'deleted-user-name' : ''}">${escapeHtml(u.name)}</span>`)
+        .join(', ');
 
       el.innerHTML = `
         <div class="slot-resize-handle slot-resize-top"></div>
         <div class="slot-title">${escapeHtml(slot.title || 'Créneau')}</div>
         <div class="slot-time">${slot.start}–${slot.end}</div>
-        ${assignedUsers.length ? `<div class="slot-users">${userDots} ${escapeHtml(userNames)}</div>` : ''}
+        ${assignedUsers.length ? `<div class="slot-users">${userDots} ${userNames}</div>` : ''}
         <div class="slot-resize-handle slot-resize-bottom"></div>
       `;
 
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); openSlotModal(slot.id); });
-      el.addEventListener('mousedown', (ev) => startDrag(ev, slot));
-      el.querySelector('.slot-resize-top').addEventListener('mousedown', (ev) => startResize(ev, slot, 'top'));
-      el.querySelector('.slot-resize-bottom').addEventListener('mousedown', (ev) => startResize(ev, slot, 'bottom'));
+      el.addEventListener('dblclick', (ev) => {
+        ev.stopPropagation();
+        if (ev.ctrlKey || ev.metaKey) return;
+        openSlotModal(slot.id);
+      });
+      el.addEventListener('mousedown', (ev) => {
+        if (ev.ctrlKey || ev.metaKey) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          toggleSlot(slot.id);
+          return;
+        }
+        startDrag(ev, slot);
+      });
+      el.querySelector('.slot-resize-top').addEventListener('mousedown', (ev) => {
+        if (ev.ctrlKey || ev.metaKey) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          toggleSlot(slot.id);
+          return;
+        }
+        startResize(ev, slot, 'top');
+      });
+      el.querySelector('.slot-resize-bottom').addEventListener('mousedown', (ev) => {
+        if (ev.ctrlKey || ev.metaKey) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          toggleSlot(slot.id);
+          return;
+        }
+        startResize(ev, slot, 'bottom');
+      });
       col.appendChild(el);
     });
 }

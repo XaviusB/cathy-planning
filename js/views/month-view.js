@@ -7,6 +7,7 @@ import { startDrag } from '../drag/slot-drag.js';
 import { startResize } from '../drag/slot-resize.js';
 import { startGridDraw } from '../drag/grid-draw.js';
 import { layoutOverlappingSlots } from '../utils/slot-layout.js';
+import { isSlotSelected, selectDay, toggleSlot } from '../selection.js';
 
 // "Agenda" month view: six weekly groups of horizontal day rows, each row showing
 // a 0h–24h timeline with slots positioned/sized proportionally to their time.
@@ -17,6 +18,8 @@ export function renderMonthView() {
   const today = new Date();
 
   const container = document.getElementById('month-view');
+  const preserveScroll = container.dataset.rendered === 'true';
+  const scrollTop = container.scrollTop;
 
   let html = `<div class="agenda-hour-ruler">
     <div class="agenda-label-spacer"></div>
@@ -39,8 +42,8 @@ export function renderMonthView() {
         ((HOUR_END - HOUR_START) * 60)) *
       100;
 
-    html += `<div class="agenda-row${isToday ? ' today' : ''}">`;
-    html += `<div class="agenda-day-label" onclick="handleMonthCellClick(event,'${dateStr}')">
+    html += `<div class="agenda-row${isToday ? ' today' : ''}" data-date="${dateStr}">`;
+    html += `<div class="agenda-day-label" onclick="handleMonthCellClick('${dateStr}')">
       <span class="agenda-day-name">${DAY_NAMES_SHORT[cellDate.getDay()]}</span>
       <span class="agenda-day-num">${cellDate.getDate()}</span>
     </div>`;
@@ -61,10 +64,16 @@ export function renderMonthView() {
 
   _renderSlots(days);
 
-  if (days.some((day) => sameDay(day, today))) {
+  if (preserveScroll) {
+    container.scrollTop = scrollTop;
+  } else if (days.some((day) => sameDay(day, today))) {
     const todayRow = container.querySelector('.agenda-row.today');
-    if (todayRow) todayRow.scrollIntoView({ block: 'center' });
+    if (todayRow) {
+      const rowTop = todayRow.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      container.scrollTop = Math.max(0, container.scrollTop + rowTop - (container.clientHeight - todayRow.offsetHeight) / 2);
+    }
   }
+  container.dataset.rendered = 'true';
 }
 
 function _renderSlots(days) {
@@ -95,6 +104,7 @@ function _renderSlots(days) {
 
       const el = document.createElement('div');
       el.className = 'agenda-slot-pill';
+      if (isSlotSelected(slot.id)) el.classList.add('selected');
       el.dataset.slotId = slot.id;
       el.style.left = `${left}%`;
       el.style.width = `${width}%`;
@@ -113,10 +123,38 @@ function _renderSlots(days) {
         <div class="slot-resize-handle slot-resize-right"></div>
       `;
 
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); openSlotModal(slot.id); });
-      el.addEventListener('mousedown', (ev) => startDrag(ev, slot));
-      el.querySelector('.slot-resize-left').addEventListener('mousedown', (ev) => startResize(ev, slot, 'left'));
-      el.querySelector('.slot-resize-right').addEventListener('mousedown', (ev) => startResize(ev, slot, 'right'));
+      el.addEventListener('dblclick', (ev) => {
+        ev.stopPropagation();
+        if (ev.ctrlKey || ev.metaKey) return;
+        openSlotModal(slot.id);
+      });
+      el.addEventListener('mousedown', (ev) => {
+        if (ev.ctrlKey || ev.metaKey) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          toggleSlot(slot.id);
+          return;
+        }
+        startDrag(ev, slot);
+      });
+      el.querySelector('.slot-resize-left').addEventListener('mousedown', (ev) => {
+        if (ev.ctrlKey || ev.metaKey) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          toggleSlot(slot.id);
+          return;
+        }
+        startResize(ev, slot, 'left');
+      });
+      el.querySelector('.slot-resize-right').addEventListener('mousedown', (ev) => {
+        if (ev.ctrlKey || ev.metaKey) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          toggleSlot(slot.id);
+          return;
+        }
+        startResize(ev, slot, 'right');
+      });
       track.appendChild(el);
     });
 
@@ -124,6 +162,6 @@ function _renderSlots(days) {
   });
 }
 
-export function handleMonthCellClick(event, dateStr) {
-  openSlotModal(null, dateStr);
+export function handleMonthCellClick(dateStr) {
+  selectDay(dateStr);
 }

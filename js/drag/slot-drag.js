@@ -1,8 +1,12 @@
 import { state, saveData } from '../state.js';
 import { renderAll } from '../renderer.js';
 import { SNAP_MIN, HOUR_START, HOUR_END } from '../constants.js';
-import { slotDurationMin, timeToMin, minToTime } from '../utils/date.js';
+import { addDays, formatDate, parseDate, slotDurationMin, timeToMin, minToTime } from '../utils/date.js';
 import { getContrastColor, showToast } from '../utils/dom.js';
+import { getSelectedSlotIds, isSlotSelected, selectSlot } from '../selection.js';
+
+const MONTH_EDGE_SCROLL_THRESHOLD = 64;
+const MONTH_EDGE_SCROLL_MAX_SPEED = 12;
 
 export let dragState = null;
 export let cancelDrag = null;
@@ -15,6 +19,24 @@ export function startDrag(e, slot) {
   const dur = slotDurationMin(slot);
   let grabOffsetMin = 0;
   const slotEl = e.currentTarget;
+  if (!isSlotSelected(slot.id)) selectSlot(slot.id);
+  const draggedSlotIds = getSelectedSlotIds();
+  const activeSlotSelector = state.view === 'week'
+    ? '#week-view .slot-block'
+    : '#month-view .agenda-slot-pill';
+  const draggedItems = draggedSlotIds
+    .map((slotId) => state.slots.find((item) => item.id === slotId))
+    .filter(Boolean)
+    .map((draggedSlot) => ({
+      slot: draggedSlot,
+      element: [...document.querySelectorAll(activeSlotSelector)]
+        .find((element) => element.dataset.slotId === draggedSlot.id),
+      duration: slotDurationMin(draggedSlot),
+      startMin: timeToMin(draggedSlot.start),
+      dateOffset: Math.round(
+        (parseDate(draggedSlot.date).getTime() - parseDate(slot.date).getTime()) / (24 * 60 * 60 * 1000),
+      ),
+    }));
   const isAgendaPill = !!slotEl?.classList.contains('agenda-slot-pill');
   if (slotEl) {
     const rect = slotEl.getBoundingClientRect();
@@ -31,6 +53,8 @@ export function startDrag(e, slot) {
   const startY = e.clientY;
   const DRAG_THRESHOLD = 4; // px — below this, treat mouseup as a plain click (open modal)
   let hasMoved = false;
+  let monthAutoScrollFrame = null;
+  let latestPointer = null;
 
   const ghost = document.getElementById('drag-ghost');
   ghost.textContent = slot.title || 'Créneau';
@@ -39,7 +63,7 @@ export function startDrag(e, slot) {
   ghost.style.left = `${e.clientX}px`;
   ghost.style.top = `${e.clientY}px`;
 
-  dragState = { slot, grabOffsetMin, preview: null };
+  dragState = { slot, slotIds: draggedSlotIds, grabOffsetMin, preview: null };
 
   // Compute where the slot would land if dropped at the cursor's current position.
   const computePreview = (ev) => {
@@ -69,21 +93,100 @@ export function startDrag(e, slot) {
     return { cell, date: cell.dataset.date, startMin };
   };
 
-  // Move the actual slot block to its future position so the user sees the result live.
+  const calculateGroupMove = (preview) => {
+    if (!preview?.date || preview.startMin === undefined) return null;
+
+    let timeDelta = preview.startMin - timeToMin(slot.start);
+    let minDelta = -Infinity;
+    let maxDelta = Infinity;
+    draggedItems.forEach((item) => {
+      minDelta = Math.max(minDelta, HOUR_START * 60 - item.startMin);
+      maxDelta = Math.min(maxDelta, HOUR_END * 60 - item.duration - item.startMin);
+    });
+    timeDelta = Math.max(minDelta, Math.min(maxDelta, timeDelta));
+    return { date: preview.date, timeDelta };
+  };
+
+  const findDropTarget = (dateStr) => {
+    const targets = document.querySelectorAll(
+      state.view === 'week' ? '#week-view .week-day-col' : '#month-view .agenda-track',
+    );
+    return [...targets].find((target) => target.dataset.date === dateStr);
+  };
+
+  // Move every selected slot live while preserving each slot's relative offset.
   const applyPreview = (preview) => {
-    if (!slotEl || !preview) return;
-    if (state.view === 'week') {
-      if (!preview.col) return;
-      if (slotEl.parentElement !== preview.col) preview.col.appendChild(slotEl);
+    const groupMove = calculateGroupMove(preview);
+    if (!groupMove) return;
+
+    draggedItems.forEach((item) => {
+      const targetDate = formatDate(addDays(parseDate(groupMove.date), item.dateOffset));
+      const target = findDropTarget(targetDate);
+      if (!target || !item.element) return;
+      if (item.element.parentElement !== target) target.appendChild(item.element);
+
+      const startMin = item.startMin + groupMove.timeDelta;
       const totalMin = (HOUR_END - HOUR_START) * 60;
-      const top = ((preview.startMin - HOUR_START * 60) / totalMin) * 100;
-      slotEl.style.top = `${top}%`;
-    } else {
-      if (!preview.cell) return;
-      if (slotEl.parentElement !== preview.cell) preview.cell.appendChild(slotEl);
-      const totalMin = (HOUR_END - HOUR_START) * 60;
-      const left = ((preview.startMin - HOUR_START * 60) / totalMin) * 100;
-      slotEl.style.left = `${left}%`;
+      if (state.view === 'week') {
+        item.element.style.top = `${((startMin - HOUR_START * 60) / totalMin) * 100}%`;
+      } else {
+        item.element.style.left = `${((startMin - HOUR_START * 60) / totalMin) * 100}%`;
+      }
+    });
+  };
+
+  const stopMonthAutoScroll = () => {
+    if (monthAutoScrollFrame !== null) {
+      cancelAnimationFrame(monthAutoScrollFrame);
+      monthAutoScrollFrame = null;
+    }
+  };
+
+  const getMonthScrollDelta = () => {
+    if (state.view !== 'month' || !latestPointer) return 0;
+    const monthView = document.getElementById('month-view');
+    if (!monthView) return 0;
+
+    const rect = monthView.getBoundingClientRect();
+    const distanceFromTop = latestPointer.clientY - rect.top;
+    const distanceFromBottom = rect.bottom - latestPointer.clientY;
+    if (distanceFromTop < MONTH_EDGE_SCROLL_THRESHOLD && monthView.scrollTop > 0) {
+      return -Math.min(
+        MONTH_EDGE_SCROLL_MAX_SPEED,
+        Math.max(1, MONTH_EDGE_SCROLL_THRESHOLD - distanceFromTop),
+      );
+    }
+    if (
+      distanceFromBottom < MONTH_EDGE_SCROLL_THRESHOLD &&
+      monthView.scrollTop < monthView.scrollHeight - monthView.clientHeight
+    ) {
+      return Math.min(
+        MONTH_EDGE_SCROLL_MAX_SPEED,
+        Math.max(1, MONTH_EDGE_SCROLL_THRESHOLD - distanceFromBottom),
+      );
+    }
+    return 0;
+  };
+
+  const autoScrollMonth = () => {
+    monthAutoScrollFrame = null;
+    if (!hasMoved) return;
+
+    const delta = getMonthScrollDelta();
+    if (!delta) return;
+
+    const monthView = document.getElementById('month-view');
+    monthView.scrollTop += delta;
+    const preview = computePreview(latestPointer);
+    dragState.preview = preview;
+    applyPreview(preview);
+    monthAutoScrollFrame = requestAnimationFrame(autoScrollMonth);
+  };
+
+  const scheduleMonthAutoScroll = (ev) => {
+    latestPointer = ev;
+    if (monthAutoScrollFrame === null && getMonthScrollDelta() !== 0) {
+      monthAutoScrollFrame = requestAnimationFrame(autoScrollMonth);
     }
   };
 
@@ -109,11 +212,13 @@ export function startDrag(e, slot) {
     const preview = computePreview(ev);
     dragState.preview = preview;
     applyPreview(preview);
+    scheduleMonthAutoScroll(ev);
   };
 
   const finishDrag = () => {
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
+    stopMonthAutoScroll();
     ghost.classList.add('hidden');
     document.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
     dragState = null;
@@ -121,8 +226,9 @@ export function startDrag(e, slot) {
   };
 
   const onMouseUp = (ev) => {
-    // Plain click (no meaningful movement): let the native click event open the slot modal.
+    // Plain click selects only this slot; the double-click handler opens its modal.
     if (!hasMoved) {
+      selectSlot(slot.id);
       finishDrag();
       return;
     }
@@ -130,22 +236,25 @@ export function startDrag(e, slot) {
     const preview = dragState?.preview ?? computePreview(ev);
     finishDrag();
 
-    if (preview) {
-      const slotIdx = state.slots.findIndex((s) => s.id === slot.id);
-      if (slotIdx >= 0) {
-        const s = state.slots[slotIdx];
-        const oldDate = s.date;
-        const oldStartMin = timeToMin(s.start);
-        const finalDate = preview.date || oldDate;
-        const finalStartMin = preview.startMin !== undefined && preview.startMin !== null ? preview.startMin : oldStartMin;
+    const groupMove = calculateGroupMove(preview);
+    if (groupMove) {
+      const movedSlots = draggedItems
+        .map((item) => {
+          const current = state.slots.find((stateSlot) => stateSlot.id === item.slot.id);
+          if (!current) return null;
+          const finalDate = formatDate(addDays(parseDate(groupMove.date), item.dateOffset));
+          const finalStartMin = item.startMin + groupMove.timeDelta;
+          const changed = current.date !== finalDate || timeToMin(current.start) !== finalStartMin;
+          current.date = finalDate;
+          current.start = minToTime(finalStartMin);
+          current.end = minToTime(finalStartMin + item.duration);
+          return changed ? current : null;
+        })
+        .filter(Boolean);
 
-        if (finalDate !== oldDate || Math.abs(finalStartMin - oldStartMin) >= SNAP_MIN) {
-          s.date = finalDate;
-          s.start = minToTime(finalStartMin);
-          s.end = minToTime(finalStartMin + dur);
-          saveData();
-          showToast('Créneau déplacé');
-        }
+      if (movedSlots.length) {
+        saveData();
+        showToast(`${movedSlots.length} créneau(x) déplacé(s)`);
       }
     }
 

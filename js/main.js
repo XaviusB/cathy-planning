@@ -2,9 +2,25 @@ import { setRenderAll } from './renderer.js';
 import { loadData, saveData, exportData, importData, resetData, state } from './state.js';
 import { renderCalendar } from './calendar.js';
 import { renderWeekView } from './views/week-view.js';
-import { setView, navigate, goToToday, setDisplayMode, setDisplayUser } from './calendar.js';
+import {
+  setView,
+  navigate,
+  goToToday,
+  openWeekFromDashboard,
+  setDisplayMode,
+  setDisplayUser,
+} from './calendar.js';
 import { openSlotModal, saveSlot, deleteSlot } from './modals/slot-modal.js';
-import { openUsersModal, saveUser, cancelEditUser, editUser, removeUser } from './modals/user-modal.js';
+import {
+  openUsersModal,
+  openUserTrashModal,
+  saveUser,
+  cancelEditUser,
+  editUser,
+  removeUser,
+  restoreUser,
+  permanentlyDeleteUser,
+} from './modals/user-modal.js';
 import { autoFillWeek, confirmAutoFill } from './modals/autofill-modal.js';
 import { showModal, closeAllModals } from './modals/modal.js';
 import {
@@ -23,6 +39,8 @@ import { handleMonthCellClick } from './views/month-view.js';
 import { exportWeekPdf } from './export-pdf.js';
 import { initTheme, setTheme, toggleMainMenu, closeMainMenu, toggleSubmenu } from './menu.js';
 import { openSettingsModal, saveSettings, renderSettingsDays } from './modals/settings-modal.js';
+import { clearSelection, getSelectedSlotIds, selectDay } from './selection.js';
+import { showToast } from './utils/dom.js';
 
 // Wire the renderer so all modules can call renderAll() without circular deps
 setRenderAll(renderCalendar);
@@ -31,16 +49,20 @@ setRenderAll(renderCalendar);
 window.setView = setView;
 window.navigate = navigate;
 window.goToToday = goToToday;
+window.openWeekFromDashboard = openWeekFromDashboard;
 window.setDisplayMode = setDisplayMode;
 window.setDisplayUser = setDisplayUser;
 window.openSlotModal = openSlotModal;
 window.saveSlot = saveSlot;
 window.deleteSlot = deleteSlot;
 window.openUsersModal = openUsersModal;
+window.openUserTrashModal = openUserTrashModal;
 window.saveUser = saveUser;
 window.cancelEditUser = cancelEditUser;
 window.editUser = editUser;
 window.removeUser = removeUser;
+window.restoreUser = restoreUser;
+window.permanentlyDeleteUser = permanentlyDeleteUser;
 window.autoFillWeek = autoFillWeek;
 window.confirmAutoFill = confirmAutoFill;
 window.exportData = exportData;
@@ -51,6 +73,7 @@ window.closeAllModals = closeAllModals;
 window.closeModal = closeModal;
 window.resolveConfirm = resolveConfirm;
 window.handleMonthCellClick = handleMonthCellClick;
+window.selectDay = selectDay;
 window.openDateRangeModal = openDateRangeModal;
 window.resetDateRangeSelection = resetDateRangeSelection;
 window.navigateDateRangeMonths = navigateDateRangeMonths;
@@ -118,22 +141,30 @@ function init() {
       } else {
         closeMainMenu();
         closeAllModals();
+        clearSelection();
       }
     }
 
-    // Hold click on slot + Delete → delete the slot
-    if ((e.key === 'Delete' || e.key === 'Backspace') && dragState?.slot) {
+    if (
+      (e.key === 'Delete' || e.key === 'Backspace') &&
+      getSelectedSlotIds().length &&
+      document.getElementById('modal-overlay')?.classList.contains('hidden') &&
+      !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)
+    ) {
       e.preventDefault();
-      const slotToDelete = dragState.slot;
       if (cancelDrag) cancelDrag();
-      state.slots = state.slots.filter((s) => s.id !== slotToDelete.id);
+      const selectedIds = new Set(getSelectedSlotIds());
+      const deletedCount = state.slots.filter((slot) => selectedIds.has(slot.id)).length;
+      state.slots = state.slots.filter((slot) => !selectedIds.has(slot.id));
+      clearSelection();
       saveData();
       renderCalendar();
+      showToast(`${deletedCount} créneau(x) supprimé(s)`);
     }
   });
 
-  // Delegated drag handler for user avatars in the dashboard panel
-  document.getElementById('dashboard-content').addEventListener('mousedown', (e) => {
+  // Delegated drag handler for user avatars in both dashboard views
+  document.querySelector('.main-layout').addEventListener('mousedown', (e) => {
     const handle = e.target.closest('.user-drag-handle, .user-drag-hint');
     if (!handle) return;
     const userId =

@@ -47,6 +47,12 @@ export function userInitials(name) {
     .slice(0, 2);
 }
 
+export function userAvatarContent(user) {
+  return user.photo
+    ? `<img src="${escapeHtml(user.photo)}" alt="${escapeHtml(user.name)}" />`
+    : userInitials(user.name);
+}
+
 export function getContrastColor(hex) {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);

@@ -16,14 +16,17 @@ export function openSlotModal(slotId, defaultDate, defaultStart, defaultEnd, def
   const titleEl = document.getElementById('slot-modal-title');
   const deleteBtn = document.getElementById('slot-delete-btn');
   const multiToggle = document.getElementById('slot-multi-user');
+  const slot = slotId ? state.slots.find((s) => s.id === slotId) : null;
+  const assignedIds = new Set(slot?.userIds || defaultUserIds || []);
+  const selectableUsers = state.users.filter((user) => !user.deleted || assignedIds.has(user.id));
 
   const cbContainer = document.getElementById('slot-users-checkboxes');
-  cbContainer.innerHTML = state.users
+  cbContainer.innerHTML = selectableUsers
     .map(
-      (u) => `<label>
-      <input type="checkbox" value="${u.id}" />
+      (u) => `<label class="${u.deleted ? 'deleted-user-option' : ''}">
+      <input type="checkbox" value="${u.id}" ${assignedIds.has(u.id) ? 'checked' : ''} ${u.deleted ? 'disabled' : ''} />
       <span class="slot-user-dot" style="background:${u.color}"></span>
-      ${escapeHtml(u.name)}
+      <span class="${u.deleted ? 'deleted-user-name' : ''}">${escapeHtml(u.name)}${u.deleted ? ' (supprimé)' : ''}</span>
     </label>`,
     )
     .join('');
@@ -41,7 +44,6 @@ export function openSlotModal(slotId, defaultDate, defaultStart, defaultEnd, def
   cbContainer.addEventListener('change', _userSelectHandler);
 
   if (slotId) {
-    const slot = state.slots.find((s) => s.id === slotId);
     if (!slot) return;
     titleEl.textContent = 'Modifier le créneau';
     deleteBtn.style.display = '';

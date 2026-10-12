@@ -22,12 +22,24 @@ export function startUserDrag(e, user) {
     ghost.style.left = `${ev.clientX}px`;
     ghost.style.top = `${ev.clientY}px`;
     document.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+    document
+      .querySelectorAll('.user-reorder-before, .user-reorder-after')
+      .forEach((el) => el.classList.remove('user-reorder-before', 'user-reorder-after'));
     const hit = document.elementFromPoint(ev.clientX, ev.clientY);
     if (hit) {
-      const slotBlock = hit.closest('.slot-block');
-      const col = hit.closest('.week-day-col');
-      if (slotBlock) slotBlock.classList.add('drop-target');
-      else if (col) col.classList.add('drop-target');
+      const userDropTarget = findUserDropTarget(hit, user.id);
+      if (userDropTarget) {
+        const rect = userDropTarget.element.getBoundingClientRect();
+        const positionClass = ev.clientY < rect.top + rect.height / 2
+          ? userDropTarget.beforeClass
+          : userDropTarget.afterClass;
+        userDropTarget.element.classList.add(positionClass);
+      } else {
+        const slotBlock = hit.closest('.slot-block');
+        const col = hit.closest('.week-day-col');
+        if (slotBlock) slotBlock.classList.add('drop-target');
+        else if (col) col.classList.add('drop-target');
+      }
     }
   };
 
@@ -36,9 +48,18 @@ export function startUserDrag(e, user) {
     document.removeEventListener('mouseup', onMouseUp);
     ghost.classList.add('hidden');
     document.querySelectorAll('.drop-target').forEach((el) => el.classList.remove('drop-target'));
+    document
+      .querySelectorAll('.user-reorder-before, .user-reorder-after')
+      .forEach((el) => el.classList.remove('user-reorder-before', 'user-reorder-after'));
 
     const hit = document.elementFromPoint(ev.clientX, ev.clientY);
     if (!hit) return;
+
+    const userDropTarget = findUserDropTarget(hit, user.id);
+    if (userDropTarget) {
+      reorderUser(user.id, userDropTarget.element.dataset.userId, ev.clientY, userDropTarget.element);
+      return;
+    }
 
     // Drop on existing slot → directly assign user
     const slotBlock = hit.closest('.slot-block');
@@ -74,4 +95,44 @@ export function startUserDrag(e, user) {
 
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
+}
+
+function findUserDropTarget(element, draggedUserId) {
+  const userCard = element.closest('.user-card');
+  if (userCard && userCard.dataset.userId !== draggedUserId) {
+    return {
+      element: userCard,
+      beforeClass: 'user-reorder-before',
+      afterClass: 'user-reorder-after',
+    };
+  }
+
+  const userRow = element.closest('.dashboard-table tbody tr');
+  if (userRow && userRow.dataset.userId !== draggedUserId) {
+    return {
+      element: userRow,
+      beforeClass: 'user-reorder-before',
+      afterClass: 'user-reorder-after',
+    };
+  }
+
+  return null;
+}
+
+function reorderUser(userId, targetUserId, clientY, targetElement) {
+  const fromIndex = state.users.findIndex((item) => item.id === userId);
+  const targetIndex = state.users.findIndex((item) => item.id === targetUserId);
+  if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return;
+
+  const [user] = state.users.splice(fromIndex, 1);
+  const adjustedTargetIndex = targetIndex > fromIndex ? targetIndex - 1 : targetIndex;
+  const targetRect = targetElement.getBoundingClientRect();
+  const insertIndex = clientY < targetRect.top + targetRect.height / 2
+    ? adjustedTargetIndex
+    : adjustedTargetIndex + 1;
+
+  state.users.splice(insertIndex, 0, user);
+  saveData();
+  renderAll();
+  showToast('Ordre des utilisateurs mis à jour');
 }

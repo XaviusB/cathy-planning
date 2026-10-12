@@ -1,7 +1,12 @@
-import { state, saveDashboardRange } from './state.js';
+import { state, saveDashboardRange, getActiveUsers } from './state.js';
 import { MONTH_NAMES, DAY_NAMES, MONTH_VIEW_WEEKS } from './constants.js';
 import { getWeekStart, addDays, formatDate, slotDurationMin, timeToMin, parseDate } from './utils/date.js';
-import { escapeHtml, userInitials } from './utils/dom.js';
+import { escapeHtml, userAvatarContent } from './utils/dom.js';
+
+const OVERLIMIT_TOOLTIP_DELAY = 900;
+let overlimitTooltipTimer = null;
+let activeOverlimitTrigger = null;
+let overlimitTooltip = null;
 
 export function renderDashboard() {
   if (state.view === 'dashboard') {
@@ -10,7 +15,8 @@ export function renderDashboard() {
   }
 
   const container = document.getElementById(state.view === 'dashboard' ? 'dashboard-view' : 'dashboard-content');
-  if (state.users.length === 0) {
+  const activeUsers = getActiveUsers();
+  if (activeUsers.length === 0) {
     container.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Ajoutez des utilisateurs pour voir les statistiques.</p>';
     return;
   }
@@ -33,7 +39,7 @@ export function renderDashboard() {
     <span>${periodLabel}</span>
   </div>`;
 
-  state.users.forEach((user) => {
+  activeUsers.forEach((user) => {
     const weekSlots = state.slots.filter(
       (s) => s.date >= wsStr && s.date <= weStr && (s.userIds || []).includes(user.id),
     );
@@ -50,11 +56,11 @@ export function renderDashboard() {
 
     const periodStatLabel = state.view === 'month' ? '6 semaines' : 'Semaine';
 
-    html += `<div class="user-card">
+    html += `<div class="user-card" data-user-id="${user.id}">
       <div class="user-card-header">
-        <div class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser vers le planning">${userInitials(user.name)}</div>
+        <div class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser vers le planning">${userAvatarContent(user)}</div>
         <div class="user-card-name">${escapeHtml(user.name)}</div>
-        <span class="user-drag-hint" title="Glisser pour créer/assigner un créneau">⠿</span>
+        <span class="user-drag-hint" title="Glisser vers le planning ou réordonner les utilisateurs">⠿</span>
       </div>
       <div class="user-stat"><span>${periodStatLabel}</span><span>${weekHours.toFixed(1)}h / ${user.maxHours}h</span></div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
@@ -75,6 +81,7 @@ export function renderDashboard() {
 
 function renderDashboardTable() {
   const container = document.getElementById('dashboard-view');
+  hideOverlimitTooltip();
   const { start, end } = state.dashboardRange
     ? { start: parseDate(state.dashboardRange.start), end: parseDate(state.dashboardRange.end) }
     : { start: getWeekStart(state.currentDate), end: addDays(getWeekStart(state.currentDate), 6) };
@@ -93,21 +100,22 @@ function renderDashboardTable() {
     ${state.dashboardRange ? `<button type="button" class="dashboard-period-clear" onclick="clearDashboardRange()" title="Revenir à la semaine en cours">✕</button>` : ''}
   </div>`;
 
-  if (state.users.length === 0) {
+  const activeUsers = getActiveUsers();
+  if (activeUsers.length === 0) {
     container.innerHTML = `${html}<p style="color:var(--text-muted);font-size:13px">Ajoutez des utilisateurs pour voir les statistiques.</p>`;
     return;
   }
 
   html += `<div class="dashboard-table-wrapper"><table class="dashboard-table">
     <thead><tr><th>Utilisateur</th>
-      ${weeks.map((week) => `<th>Semaine<br>${week.start.getDate()} ${MONTH_NAMES[week.start.getMonth()]}</th>`).join('')}
-      <th>Total</th>
+      ${weeks.map((week) => `<th><button type="button" class="dashboard-week-link" onclick="openWeekFromDashboard('${formatDate(week.start)}')" title="Ouvrir cette semaine">Semaine<br>${week.start.getDate()} ${MONTH_NAMES[week.start.getMonth()]}</button></th>`).join('')}
+      <th>Total</th><th aria-label="Réordonner les utilisateurs"></th>
     </tr></thead><tbody>`;
 
-  state.users.forEach((user) => {
+  activeUsers.forEach((user) => {
     let totalHours = 0;
-    html += `<tr><th scope="row"><span class="dashboard-table-user">
-      <span class="user-avatar" style="background:${user.color}">${userInitials(user.name)}</span>
+    html += `<tr data-user-id="${user.id}"><th scope="row"><span class="dashboard-table-user">
+      <span class="user-avatar user-drag-handle" style="background:${user.color}" data-user-id="${user.id}" title="Glisser pour réordonner">${userAvatarContent(user)}</span>
       ${escapeHtml(user.name)}
     </span></th>`;
 
@@ -125,17 +133,125 @@ function renderDashboardTable() {
       const overLimit = hours > user.maxHours;
       const restInsufficient =
         calculateWeeklyRestHours(week.start, week.end) < state.settings.weeklyRestHours;
-      html += `<td class="${overLimit ? 'dashboard-cell-danger' : ''}${restInsufficient ? ' dashboard-cell-warning' : ''}">
+      html += `<td class="${overLimit ? 'dashboard-cell-danger dashboard-overlimit-trigger' : ''}${restInsufficient ? ' dashboard-cell-warning' : ''}"${overLimit ? ` data-user-id="${user.id}" data-week-start="${formatDate(week.start)}"` : ''}>
         <strong>${hours.toFixed(1)}h</strong> <span>/ ${user.maxHours}h</span>
         ${overLimit ? '<small>⚠️ Dépassement</small>' : ''}
         ${restInsufficient ? '<small>⚠️ Repos insuffisant</small>' : ''}
       </td>`;
     });
 
-    html += `<td class="dashboard-table-total"><strong>${totalHours.toFixed(1)}h</strong></td></tr>`;
+    html += `<td class="dashboard-table-total"><strong>${totalHours.toFixed(1)}h</strong></td>
+      <td class="dashboard-table-drag-handle">
+        <span class="user-drag-hint" data-user-id="${user.id}" title="Glisser pour réordonner">⠿</span>
+      </td></tr>`;
   });
 
   container.innerHTML = `${html}</tbody></table></div>`;
+  bindOverlimitTooltip(container);
+}
+
+function bindOverlimitTooltip(container) {
+  if (container.dataset.overlimitTooltipBound) return;
+  container.dataset.overlimitTooltipBound = 'true';
+
+  container.addEventListener('mouseover', (event) => {
+    const trigger = event.target.closest('.dashboard-overlimit-trigger');
+    if (!trigger || !container.contains(trigger)) return;
+    if (activeOverlimitTrigger === trigger) return;
+
+    clearOverlimitTooltipTimer();
+    activeOverlimitTrigger = trigger;
+    overlimitTooltipTimer = setTimeout(() => {
+      if (activeOverlimitTrigger === trigger) showOverlimitTooltip(trigger);
+    }, OVERLIMIT_TOOLTIP_DELAY);
+  });
+
+  container.addEventListener('mouseout', (event) => {
+    const trigger = event.target.closest('.dashboard-overlimit-trigger');
+    if (!trigger || !container.contains(trigger)) return;
+    if (event.relatedTarget && trigger.contains(event.relatedTarget)) return;
+
+    if (activeOverlimitTrigger === trigger) {
+      clearOverlimitTooltipTimer();
+      hideOverlimitTooltip();
+    }
+  });
+}
+
+function showOverlimitTooltip(trigger) {
+  const user = state.users.find((item) => item.id === trigger.dataset.userId);
+  if (!user) return;
+
+  const weekStart = parseDate(trigger.dataset.weekStart);
+  const weekEnd = addDays(weekStart, 6);
+  const weekSlots = state.slots
+    .filter(
+      (slot) =>
+        slot.date >= formatDate(weekStart) &&
+        slot.date <= formatDate(weekEnd) &&
+        (slot.userIds || []).includes(user.id),
+    )
+    .sort((a, b) => `${a.date}T${a.start}`.localeCompare(`${b.date}T${b.start}`));
+  const hours = weekSlots.reduce((total, slot) => total + slotDurationMin(slot), 0) / 60;
+  const excess = hours - user.maxHours;
+  const slotList = weekSlots
+    .map(
+      (slot) => `<li>
+        <span>${formatSlotDate(slot.date)} · ${slot.start}–${slot.end}</span>
+        <strong>${(slotDurationMin(slot) / 60).toFixed(1)}h</strong>
+      </li>`,
+    )
+    .join('');
+
+  const tooltip = document.createElement('div');
+  tooltip.className = 'dashboard-overlimit-popover';
+  tooltip.innerHTML = `
+    <div class="dashboard-overlimit-title">Dépassement</div>
+    <div class="dashboard-overlimit-subtitle">${escapeHtml(user.name)} · semaine du ${formatSlotDate(formatDate(weekStart))}</div>
+    <div class="dashboard-overlimit-summary">
+      <span>${hours.toFixed(1)}h réalisées / ${user.maxHours}h maximum</span>
+      <strong>+${excess.toFixed(1)}h</strong>
+    </div>
+    <div class="dashboard-overlimit-list-title">Créneaux concernés</div>
+    <ul>${slotList}</ul>`;
+
+  document.body.appendChild(tooltip);
+  const triggerRect = trigger.getBoundingClientRect();
+  const margin = 12;
+  const gap = 8;
+  let left = triggerRect.left;
+  let top = triggerRect.bottom + gap;
+  const maxLeft = window.innerWidth - tooltip.offsetWidth - margin;
+
+  left = Math.max(margin, Math.min(left, maxLeft));
+  if (top + tooltip.offsetHeight > window.innerHeight - margin) {
+    top = triggerRect.top - tooltip.offsetHeight - gap;
+  }
+  top = Math.max(margin, top);
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+  overlimitTooltip = tooltip;
+}
+
+function clearOverlimitTooltipTimer() {
+  if (overlimitTooltipTimer) {
+    clearTimeout(overlimitTooltipTimer);
+    overlimitTooltipTimer = null;
+  }
+}
+
+function hideOverlimitTooltip() {
+  clearOverlimitTooltipTimer();
+  activeOverlimitTrigger = null;
+  if (overlimitTooltip) {
+    overlimitTooltip.remove();
+    overlimitTooltip = null;
+  }
+}
+
+function formatSlotDate(dateStr) {
+  const date = parseDate(dateStr);
+  return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
 }
 
 export function clearDashboardRange() {

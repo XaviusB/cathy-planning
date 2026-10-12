@@ -38,10 +38,18 @@
       <div class="header-right">
         <button class="btn btn-primary" onclick="openSlotModal(null, null)">+ Créneau</button>
         <button class="btn btn-secondary" onclick="autoFillWeek()">🪄 Remplir auto</button>
-        <button class="btn btn-secondary" onclick="openUsersModal()">👥 Utilisateurs</button>
         <div class="dropdown-menu" id="main-menu">
           <button class="btn btn-secondary" onclick="toggleMainMenu(event)">☰ Menu</button>
           <div class="dropdown-panel hidden" id="main-menu-panel">
+            <div class="dropdown-submenu">
+              <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-users')">
+                👥 Utilisateurs <span class="dropdown-caret">›</span>
+              </button>
+              <div class="dropdown-submenu-panel hidden" id="submenu-users">
+                <button class="dropdown-item" onclick="openUsersModal();closeMainMenu()">Gérer les utilisateurs</button>
+                <button class="dropdown-item" onclick="openUserTrashModal();closeMainMenu()">🗑️ Corbeille</button>
+              </div>
+            </div>
             <div class="dropdown-submenu">
               <button class="dropdown-item" onclick="toggleSubmenu(event,'submenu-data')">
                 💾 Sauvegarde &amp; restauration <span class="dropdown-caret">›</span>
@@ -169,6 +177,25 @@
         <h4 id="user-form-title">Ajouter un utilisateur</h4>
         <label>Nom <input type="text" id="user-name" placeholder="Nom complet" /></label>
         <label>Couleur <input type="color" id="user-color" value="#4f86f7" /></label>
+        <label>Photo <input type="file" id="user-photo-file" accept="image/*" /></label>
+        <div id="user-photo-editor" class="user-photo-editor hidden">
+          <div class="user-photo-editor-row">
+            <div id="user-photo-cropper" class="user-photo-cropper">
+              <img id="user-photo-image" alt="Aperçu du recadrage" draggable="false" />
+            </div>
+            <div class="user-photo-preview-block">
+              <span>Aperçu</span>
+              <canvas id="user-photo-preview" class="user-photo-preview" width="64" height="64"></canvas>
+            </div>
+          </div>
+          <div class="user-photo-zoom-controls">
+            <button type="button" class="icon-btn" id="user-photo-zoom-out" title="Dézoomer">-</button>
+            <input type="range" id="user-photo-zoom" min="1" max="3" step="0.01" value="1" aria-label="Zoom de la photo" />
+            <button type="button" class="icon-btn" id="user-photo-zoom-in" title="Zoomer">+</button>
+          </div>
+          <small class="user-photo-help">Faites glisser la photo pour la repositionner dans le rond.</small>
+          <button type="button" class="btn btn-secondary user-photo-remove" id="user-photo-remove">Supprimer la photo</button>
+        </div>
         <label>Max heures/semaine <input type="number" id="user-max-hours" value="35" min="1" max="168" /></label>
         <label>Repos quotidien min (h) <input type="number" id="user-rest-hours" value="11" min="0" max="24" /></label>
         <label>Max heures/jour <input type="number" id="user-max-daily" value="10" min="1" max="24" /></label>
@@ -176,6 +203,20 @@
           <button class="btn btn-secondary" id="user-cancel-edit-btn" style="display:none" onclick="cancelEditUser()">Annuler</button>
           <button class="btn btn-primary" onclick="saveUser()">Enregistrer</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Deleted users trash -->
+    <div id="user-trash-modal" class="modal hidden">
+      <div class="modal-header">
+        <h3>Corbeille des utilisateurs</h3>
+        <button class="modal-close" onclick="closeAllModals()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="user-trash-warning">
+          Restaurer un utilisateur conserve ses assignations. Une suppression définitive retire ses assignations des créneaux.
+        </p>
+        <div id="user-trash-list"></div>
       </div>
     </div>
 
@@ -201,20 +242,57 @@
         <button class="modal-close" onclick="closeAllModals()">✕</button>
       </div>
       <div class="modal-body">
-        <p>Configurer les paramètres du remplissage automatique pour la semaine en cours.</p>
-        <label>Heure de début <input type="time" id="af-start" value="08:00" /></label>
-        <label>Heure de fin <input type="time" id="af-end" value="18:00" /></label>
-        <label>Durée d'un créneau (minutes) <input type="number" id="af-duration" value="60" min="15" step="15" /></label>
-        <label>Jours à remplir
+        <p>Choisissez la période et les règles de répartition des créneaux.</p>
+        <div class="autofill-grid">
+          <label>Date de début <input type="date" id="af-start-date" /></label>
+          <label>Date de fin <input type="date" id="af-end-date" /></label>
+        </div>
+        <div class="autofill-section">
+          <h4>Horaires et volume</h4>
+          <div class="autofill-grid">
+            <label>Heure de début <input type="time" id="af-start" /></label>
+            <label>Heure de fin <input type="time" id="af-end" /></label>
+            <label>Heures à planifier par jour
+              <input type="number" id="af-daily-hours" min="0.25" max="24" step="0.25" />
+            </label>
+            <label>Durée d'un créneau (minutes)
+              <input type="number" id="af-duration" min="15" max="1440" step="15" />
+            </label>
+          </div>
+        </div>
+        <label>Répartition des utilisateurs
+          <select id="af-assignment">
+            <option value="balanced">Répartir équitablement en respectant les limites</option>
+            <option value="none">Créer des créneaux non assignés</option>
+          </select>
+        </label>
+        <label>Utilisateurs concernés
+          <div class="checkbox-group" id="af-users"></div>
+        </label>
+        <label>Jours à planifier
           <div class="checkbox-group" id="af-days">
-            <label><input type="checkbox" value="1" checked /> Lundi</label>
-            <label><input type="checkbox" value="2" checked /> Mardi</label>
-            <label><input type="checkbox" value="3" checked /> Mercredi</label>
-            <label><input type="checkbox" value="4" checked /> Jeudi</label>
-            <label><input type="checkbox" value="5" checked /> Vendredi</label>
+            <label><input type="checkbox" value="1" /> Lundi</label>
+            <label><input type="checkbox" value="2" /> Mardi</label>
+            <label><input type="checkbox" value="3" /> Mercredi</label>
+            <label><input type="checkbox" value="4" /> Jeudi</label>
+            <label><input type="checkbox" value="5" /> Vendredi</label>
             <label><input type="checkbox" value="6" /> Samedi</label>
             <label><input type="checkbox" value="0" /> Dimanche</label>
           </div>
+        </label>
+        <label>Jours de repos hebdomadaire
+          <div class="checkbox-group" id="af-rest-days">
+            <label><input type="checkbox" value="1" /> Lundi</label>
+            <label><input type="checkbox" value="2" /> Mardi</label>
+            <label><input type="checkbox" value="3" /> Mercredi</label>
+            <label><input type="checkbox" value="4" /> Jeudi</label>
+            <label><input type="checkbox" value="5" /> Vendredi</label>
+            <label><input type="checkbox" value="6" /> Samedi</label>
+            <label><input type="checkbox" value="0" /> Dimanche</label>
+          </div>
+        </label>
+        <label>Repos hebdomadaire minimum (heures)
+          <input type="number" id="af-weekly-rest-hours" min="35" max="168" step="1" />
         </label>
         <label>Titre du créneau <input type="text" id="af-title" value="Disponible" /></label>
       </div>
